@@ -7,8 +7,22 @@
         xmlns:local="clr-namespace:CSharp"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
+
     <DockPanel>
-   <wv2:WebView2 Name="webView2"
+        <!-- 菜单栏 -->
+        <Menu DockPanel.Dock="Top">
+
+            <MenuItem Header="_操作">
+                <MenuItem Header="_重新加载" Click="ReLoad_Click"/>
+                
+                <Separator/>
+                <MenuItem Header="_Test" Click="Test_Click"/>
+            </MenuItem>
+
+        </Menu>
+
+        <!-- 内容区域 -->
+        <wv2:WebView2 Name="webView2"
    />
-</DockPanel>
+    </DockPanel>
 </Window>
