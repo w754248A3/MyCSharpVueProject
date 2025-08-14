@@ -30,7 +30,7 @@
       
     </div>
     <div v-if="isOpenPop">
-    <PopPage :in-text="text" :out-text="outText"></PopPage>
+    <PopPage :in-text="text" @on-confirm-text="outText"></PopPage>
   </div>
   </div>
   
@@ -39,108 +39,18 @@
 <script setup lang="ts">
 import { defineComponent, reactive, ref } from "vue";
 import PopPage from "./PopPage.vue";
-
-
-interface TableData{
-  id: number;
-  parentId: number | null;
-  title: string;
-}
-
-interface Option {
-  id: number;
-  label: string;
-}
-
-interface NodeData {
-  id: number;
-  parentId: number | null;
-  title: string;
-  options: Option[];
-}
-
-const key="datajsong67ssfds";
-
-let tableData :TableData[]=[
-
-  {
-    id: 1,
-    parentId: null,
-    title: "请选择年份范围",
-  },
-
-  {
-    id: 2,
-    parentId: 1,
-    title: "2000年-2005年",
-   
-  },
-  {
-    id: 3,
-    parentId: 1,
-    title: "2006年-2010年",
-   
-  },
-  {
-    id: 4,
-    parentId: 1,
-    title: "2011年-2015年",
-    
-  },
-
-  {
-    id: 5,
-    parentId: 4,
-    title: "手机",
-    
-  },
-
-  {
-    id: 6,
-    parentId: 4,
-    title: "冰箱",
-    
-  },
-  {
-    id: 7,
-    parentId: 4,
-    title: "空调",
-    
-  },
-
-  {
-    id: 8,
-    parentId: 5,
-    title: "CPU",
-    
-  },
-
-  {
-    id: 9,
-    parentId: 5,
-    title: "GPU",
-    
-  },
-  {
-    id: 10,
-    parentId: 5,
-    title: "RAM",
-    
-  },
-
-
-];
-
-const json =  window.localStorage.getItem(key);
-
-if(json){
-
-tableData = JSON.parse(json);
-}
-
+import type {TableData, NodeData, Option} from "../mytype"
 
 
 const isOpenPop =ref(false);
+
+
+const funcs = defineProps<{
+  getTableDataRootNode:()=> NodeData,
+  findChildNode:(id:number)=>NodeData,
+  addNode:(s:string, parentId:number)=> void
+
+}>();
 
 
 const text = ref("");
@@ -148,61 +58,12 @@ const text = ref("");
 const outText = ref<(s:string)=> void>((s)=> {});
 
 
-      function getTableDataRootNode():NodeData{
-        const vs = tableData.filter(v=> v.parentId=== null);
-
-        if(vs.length !==1){
-          console.log(vs);
-          throw new Error("find root node length not 1");
-        }
-
-        const rootNode = vs[0];
-
-
-        const rootNodeChildNodes = tableData.filter(v=> v.parentId=== rootNode.id);
-
-        return{
-          id:rootNode.id,
-          parentId:rootNode.parentId,
-          title:rootNode.title,
-
-          options: rootNodeChildNodes.map(v=> {return {id:v.id, label:v.title}})
-        };
-
-
-      }
-
-
-      function findChildNode(id:number){
-        const vs = tableData.filter(v=> v.id=== id);
-
-        if(vs.length !==1){
-          console.log(vs);
-          throw new Error("find child node length not 1");
-        }
-
-        const childNode = vs[0];
-
-
-        const childNodeChildNodes = tableData.filter(v=> v.parentId=== childNode.id);
-
-        return{
-          id:childNode.id,
-          parentId:childNode.parentId,
-          title:childNode.title,
-
-          options: childNodeChildNodes.map(v=> {return {id:v.id, label:v.title}})
-        };
-
-
-      }
-
   const displayedNodes = ref<NodeData[]>([]);
   const collapsed = reactive<Record<number, boolean>>({});
   const selected = reactive<Record<number, number | null>>({});
 
   const initRootNode = () => {
-    const root = getTableDataRootNode();
+    const root = funcs.getTableDataRootNode();
     if (root) {
       displayedNodes.value = [root];
       collapsed[root.id] = false;
@@ -225,7 +86,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
     selected[node.id] = option.id;
 
     // 找子节点
-    const child = findChildNode(option.id);
+    const child = funcs.findChildNode(option.id);
     if (child) {
       collapsed[child.id] = false;
       displayedNodes.value.push(child);
@@ -241,25 +102,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
       isOpenPop.value=false;
 
 
-      if(s){
-        let vs = tableData.map(v=> v.id);
-        const newID = Math.max(...vs)+1;
-
-        tableData.push({
-          id:newID,
-
-          parentId:parentId,
-
-          title:s
-        });
-
-
-        const json = JSON.stringify(tableData);
-
-
-        window.localStorage.setItem(key, json);
-      }
-
+      funcs.addNode(s, parentId);
     };
 
 

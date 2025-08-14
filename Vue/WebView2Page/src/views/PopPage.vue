@@ -22,25 +22,25 @@
 <script setup lang="ts">
   import { defineComponent, ref } from "vue";
 
-  const {outText, inText } = defineProps<{
+  const { inText } = defineProps<{
     inText:string
-    outText:(text:string)=> void
   }>();
+
+  const emit = defineEmits<{"onConfirmText":[text:string]}>();
 
   
   const showModal = ref(true);
   const text = ref(inText);
 
   function onCancel() {
-
-    outText(inText);
-
+    emit("onConfirmText", inText);
+   
     showModal.value = false;
   }
 
   function onConfirm() {
-    outText(text.value);
-
+    emit("onConfirmText", text.value);
+   
     showModal.value = false;
   }
 
