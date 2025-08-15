@@ -25,7 +25,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'item-click', payload: { text: string; id: string | number }): void
+  (e: 'item-click', payload: ListItem): void
 }>()
 
 const selectedIndex = ref<number | null>(null)

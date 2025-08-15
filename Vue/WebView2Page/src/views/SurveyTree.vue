@@ -46,9 +46,10 @@ const isOpenPop =ref(false);
 
 
 const funcs = defineProps<{
-  getTableDataRootNode:()=> NodeData,
+  getTableDataRootNode:(id:number)=> NodeData,
   findChildNode:(id:number)=>NodeData,
   addNode:(s:string, parentId:number)=> void
+  id:number
 
 }>();
 
@@ -63,7 +64,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const selected = reactive<Record<number, number | null>>({});
 
   const initRootNode = () => {
-    const root = funcs.getTableDataRootNode();
+    const root = funcs.getTableDataRootNode(funcs.id);
     if (root) {
       displayedNodes.value = [root];
       collapsed[root.id] = false;

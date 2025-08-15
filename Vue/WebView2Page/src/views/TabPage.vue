@@ -4,16 +4,14 @@
     <div class="tabs">
       <button
         v-for="tab in tabs"
-        :key="tab.id"
-        :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
+        :key="tab.index"
+        :class="{ active: activeTab === tab.index }"
+        @click="activeTab = tab.index"
       >
-      <span class="removeButton" @click.stop="removeTab(tab.id)">×</span>
-        {{ tab.title }}
+      <span class="removeButton" @click.stop="removeTab(tab.index)">×</span>
+        {{ tab.text }}
         
       </button>
-      
-      <button @click="addTab">+ 添加</button>
     </div>
 
     <!-- 标签页内容 -->
@@ -25,57 +23,48 @@
         :add-node="funcs.addNode"
         :find-child-node="funcs.findChildNode"
         :get-table-data-root-node="funcs.getTableDataRootNode"
+        :id="tab.id"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, watch } from 'vue';
 import SurveyTree from './SurveyTree.vue';
-import type {TableData, NodeData, Option} from "../mytype"
-
-interface Tab {
-  id: number;
-  title: string;
-}
-
+import type {TableData, NodeData, Option, ListItem, Tabs} from "../mytype"
 
 
 const funcs = defineProps<{
-  getTableDataRootNode:()=> NodeData,
+  getTableDataRootNode:(id:number)=> NodeData,
   findChildNode:(id:number)=>NodeData,
-  addNode:(s:string, parentId:number)=> void
-
+  addNode:(s:string, parentId:number)=> void,
+  tabs:Tabs[]
 }>();
 
 
 
-
-const tabs = ref<Tab[]>([
-    { id: 1, title: '标签 1' },
-    { id: 2, title: '标签 2' },
-  ]);
-  const activeTab = ref(1);
-  let nextId = 3;
-  let n = 1;
-  const addTab = () => {
-    n = n*10;
-    tabs.value.push({ id: nextId, title: `标签${n.toString()} ${nextId}` });
-    activeTab.value = nextId;
-    nextId++;
-  };
-
-  const removeTab = (id: number) => {
-    const index = tabs.value.findIndex(t => t.id === id);
-    if (index !== -1) {
-      tabs.value.splice(index, 1);
+  const activeTab = ref(-1);
+  
+  const removeTab = (index: number) => {
+    const v = funcs.tabs.findIndex(t => t.index === index);
+    if (v !== -1) {
+      funcs.tabs.splice(v, 1);
       // 如果删除的是当前激活的标签，切换到其他标签
-      if (activeTab.value === id && tabs.value.length > 0) {
-        activeTab.value = tabs.value[Math.max(0, index - 1)].id;
+      if (activeTab.value === index && funcs.tabs.length > 0) {
+        activeTab.value = funcs.tabs[Math.max(0, v - 1)].index;
       }
     }
   };
+
+
+  watch(
+  () => funcs.tabs,
+  () => {
+    
+  },
+  { deep: true }
+)
 </script>
 
 <style scoped>

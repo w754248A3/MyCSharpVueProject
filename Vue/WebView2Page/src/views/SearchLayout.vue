@@ -8,21 +8,25 @@
       @input="onSearchInput"
       placeholder="请输入搜索内容..."
     />
-    <button class="add-button" @click="onAddRoot">添加根</button>
-
+   
     <!-- 下方内容区（插槽） -->
     <div class="content">
       <slot></slot>
     </div>
+    
   </div>
 </template>
 
 <script setup lang="ts">
 import { defineComponent, ref } from "vue";
+import PopPage from "./PopPage.vue";
 
 const emit = defineEmits<{
-    "search-change":[value:string]
+    "search-change":[value:string],
+    "add-root":[value:string]
 }>();
+
+
 
 const searchText = ref("");
 let debounceTimer: number | undefined;
