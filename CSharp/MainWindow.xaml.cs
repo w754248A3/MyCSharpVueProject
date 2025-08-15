@@ -16,8 +16,10 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using LinqToDB;
 using LinqToDB.Data;
+using LinqToDB.DataProvider.SQLite;
 using LinqToDB.Linq;
 using LinqToDB.Mapping;
+using LinqToDB.SqlQuery;
 using Microsoft.Data.Sqlite;
 using Microsoft.Web.WebView2.Core;
 
@@ -154,6 +156,34 @@ public partial class MainWindow : Window
 
     }
 
+    public class SearchData
+    {
+        [LinqToDB.Mapping.Column("rowid")]
+        public uint Rowid { get; set; }
+
+        [LinqToDB.Mapping.Column("Value")]
+        public string Value { get; set; }        
+    }
+
+    readonly ISQLiteExtensions _ex = Sql.Ext.SQLite();
+    List<NodeData> SearchFunc(string searchText){
+
+        var vs = _con.GetTable<SearchData>().TableName("textSearchTable")
+        .Where(p=> _ex.Match(p.Value, searchText))
+        .Select(p => new { RowId = _ex.RowId(p), Rank = _ex.Rank(p) })
+        
+        .InnerJoin(_con.GetTable<NodeData>().TableName("nodesTable"), (a,b)=> a.RowId == b.Id, (a, b) => new { Value = b, a.Rank })
+        .OrderBy(p => p.Rank)
+        .Select(p => p.Value)
+        .ToList();
+
+
+
+        return vs;
+
+
+    }
+
     private void Test_Click(object sender, RoutedEventArgs e)
     {
         
@@ -198,10 +228,27 @@ public partial class MainWindow : Window
 
             var searchText = jsondoc.RootElement.GetProperty("value").GetString();
 
+            List<NodeData> vs;
+
+            if(!string.IsNullOrWhiteSpace(searchText)){
+                try{
+                vs = SearchFunc(searchText??"");
+                }
+                catch(SqlException ex){
+                    vs = new List<NodeData>();
+                }
+
+            }
+            else{
+                vs = new List<NodeData>();
+            }
 
            
-            var s = JsonSerializer.Serialize(new MessageData<List<NodeData>>{Type= MessageType.SEARCH, Index= index, Value=
-            [new NodeData{Id=1, Parent_Id=null, Text="1"}]});
+            
+
+           
+            var s = JsonSerializer.Serialize(new MessageData<List<NodeData>>{Type= MessageType.SEARCH, Index= index, Value=vs});
+
 
             webView2.CoreWebView2.PostWebMessageAsString(s);
         }

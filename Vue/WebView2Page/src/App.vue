@@ -176,6 +176,21 @@ const handleSearch = (value: string) => {
       listIsView.value= true;
 };
 
+
+const handleSearch2 = async (value: string) => {
+      console.log("搜索内容变化：", value);
+      const vs = await messageFunc("SEARCH", value);
+      const fvs =vs.map(v=> {return {text:v.title, id:v.id}});
+
+      data.value= fvs;
+
+
+      //data.value.push({text:value,id:id++});
+
+      listIsView.value= true;
+};
+
+
 let tabIndex = 0;
 const onSelect= (v:ListItem)=>{
 
@@ -364,7 +379,18 @@ tableData = JSON.parse(json);
       }
   }
 
+    function addNode2(text:string, parentId:number){
+    if(text){
+        
+        messageFunc("ADDNODE", {
+          id:0,
 
+          parentId:parentId,
+
+          title:text
+        })
+      }
+  }
 
   const isViewPop = ref(false);
 
@@ -394,6 +420,33 @@ function onInputOverText(text:string){
 
 
     window.localStorage.setItem(key, json);
+
+  }
+
+  
+
+}
+
+
+
+function onInputOverText2(text:string){
+  isViewPop.value=false;
+
+
+
+  if(text){
+    
+    const data = {
+          id:0,
+
+          parentId:null,
+
+          title:text
+        };
+
+     
+     messageFunc("ADDNODE", data);
+
 
   }
 
@@ -444,15 +497,15 @@ async function onText(){
 <template>
   <button @click="onText">测试</button>
   <button @click="onAddRoot">添加根</button>
-  <SearchLayout @search-change="handleSearch">
+  <SearchLayout @search-change="handleSearch2">
     <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
     <TabPage :tabs="tab" v-show="!listIsView"
-    :add-node="addNode"
+    :add-node="addNode2"
         :find-child-node="findChildNode2"
         :get-table-data-root-node="findChildNode2"
         ></TabPage>
   </SearchLayout>
-  <PopPage in-text="" @on-confirm-text="onInputOverText" v-if="isViewPop"></PopPage>
+  <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
 </template>
 
 

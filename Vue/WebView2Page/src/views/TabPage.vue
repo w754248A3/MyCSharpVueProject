@@ -18,8 +18,8 @@
     <div class="tab-content">
       <SurveyTree
         v-for="tab in tabs"
-        :key="tab.id"
-        v-show="activeTab === tab.id"
+        :key="tab.index"
+        v-show="activeTab === tab.index"
         :add-node="funcs.addNode"
         :find-child-node="funcs.findChildNode"
         :get-table-data-root-node="funcs.getTableDataRootNode"
