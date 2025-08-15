@@ -41,8 +41,10 @@ public partial class MainWindow : Window
         InitializeComponent();
 
 
-
+        InitData();
         Init();
+
+        
     }
     private void ReLoad_Click(object sender, RoutedEventArgs e)
     {
@@ -135,11 +137,28 @@ public partial class MainWindow : Window
         }
     }
 
+
+    QueryData QueryFunc(int id){
+
+        var obj = _con.GetTable<NodeData>().TableName("nodesTable")
+        .Where(p=> p.Id==id).First();
+
+
+        var vs = _con.GetTable<NodeData>().TableName("nodesTable")
+        .Where(p=> p.Parent_Id ==id).ToList();
+
+
+        return new QueryData{Root = obj, Child=vs};
+
+
+
+    }
+
     private void Test_Click(object sender, RoutedEventArgs e)
     {
         
 
-        InitData();
+        
 
     }
 
@@ -169,11 +188,7 @@ public partial class MainWindow : Window
             var id = jsondoc.RootElement.GetProperty("value").GetInt32();
 
 
-            var q = new QueryData{
-                Root = new NodeData{Id = 1, Parent_Id=null, Text="1"},
-
-                Child= [new() {Id = 2, Parent_Id=null, Text="2"}]
-            };
+            var q = QueryFunc(id);
 
             var s = JsonSerializer.Serialize(new MessageData<QueryData>{Type= MessageType.QUERY, Index= index, Value=q});
 

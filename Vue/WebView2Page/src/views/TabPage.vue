@@ -36,8 +36,8 @@ import type {TableData, NodeData, Option, ListItem, Tabs} from "../mytype"
 
 
 const funcs = defineProps<{
-  getTableDataRootNode:(id:number)=> NodeData,
-  findChildNode:(id:number)=>NodeData,
+  getTableDataRootNode:(id:number)=> Promise<NodeData>,
+  findChildNode:(id:number)=>Promise<NodeData>,
   addNode:(s:string, parentId:number)=> void,
   tabs:Tabs[]
 }>();

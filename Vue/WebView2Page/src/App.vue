@@ -7,17 +7,17 @@ import type { ShallowRefMarker } from '@vue/reactivity';
 type FunctionMap = {
   ADDNODE: {
     args: TableData;
-    return: Promise<NodeData>;
+    return: Promise<TableData>;
   };
 
   QUERY: {
     args: number;
-    return: Promise<{root:NodeData, child:NodeData[]}>;
+    return: Promise<{root:TableData, child:TableData[]}>;
   };
 
   SEARCH:{
     args:string;
-    return: Promise<NodeData[]>;
+    return: Promise<TableData[]>;
   };
  
 };
@@ -327,6 +327,22 @@ tableData = JSON.parse(json);
 
   }
 
+  async function findChildNode2(id:number){
+    
+    const obj = await messageFunc("QUERY", id);
+
+    
+    return{
+      id:obj.root.id,
+      parentId:obj.root.parentId,
+      title:obj.root.title,
+
+      options: obj.child.map(v=> {return {id:v.id, label:v.title}})
+    };
+
+
+  }
+
   function addNode(text:string, parentId:number){
     if(text){
         let vs = tableData.map(v=> v.id);
@@ -432,8 +448,8 @@ async function onText(){
     <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
     <TabPage :tabs="tab" v-show="!listIsView"
     :add-node="addNode"
-        :find-child-node="findChildNode"
-        :get-table-data-root-node="findChildNode"
+        :find-child-node="findChildNode2"
+        :get-table-data-root-node="findChildNode2"
         ></TabPage>
   </SearchLayout>
   <PopPage in-text="" @on-confirm-text="onInputOverText" v-if="isViewPop"></PopPage>

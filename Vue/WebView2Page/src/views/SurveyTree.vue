@@ -46,8 +46,8 @@ const isOpenPop =ref(false);
 
 
 const funcs = defineProps<{
-  getTableDataRootNode:(id:number)=> NodeData,
-  findChildNode:(id:number)=>NodeData,
+  getTableDataRootNode:(id:number)=> Promise<NodeData>,
+  findChildNode:(id:number)=>Promise<NodeData>,
   addNode:(s:string, parentId:number)=> void
   id:number
 
@@ -63,15 +63,17 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const collapsed = reactive<Record<number, boolean>>({});
   const selected = reactive<Record<number, number | null>>({});
 
-  const initRootNode = () => {
-    const root = funcs.getTableDataRootNode(funcs.id);
+  const initRootNode = async () => {
+    const root = await funcs.getTableDataRootNode(funcs.id);
     if (root) {
       displayedNodes.value = [root];
       collapsed[root.id] = false;
     }
   };
 
-  const handleSelect = (node: NodeData, option: Option) => {
+  const handleSelect = async (node: NodeData, option: Option) => {
+
+    
     // 删除当前节点之后的所有节点
     const index = displayedNodes.value.findIndex((n) => n.id === node.id);
 
@@ -87,7 +89,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
     selected[node.id] = option.id;
 
     // 找子节点
-    const child = funcs.findChildNode(option.id);
+    const child = await funcs.findChildNode(option.id);
     if (child) {
       collapsed[child.id] = false;
       displayedNodes.value.push(child);
