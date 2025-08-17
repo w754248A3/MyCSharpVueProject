@@ -116,6 +116,7 @@ public partial class MainWindow : Window
         Value, 
         tokenize="mytokenizer", 
         content='',
+        contentless_delete=1
         )
         """);
 

@@ -284,8 +284,8 @@ namespace SqliteEx
 
             ref Fts5_api v = ref Unsafe.AsRef<Fts5_api>((void*)fts5_api_p);
 
-            if(v.iVersion != 2){
-                ThrowException("Fts5_api.iVersion != 2 error", raw.SQLITE_ERROR, conn.Handle);
+            if(v.iVersion < 2){
+                ThrowException("Fts5_api.iVersion < 2 error", raw.SQLITE_ERROR, conn.Handle);
             }
 
             Fts5_tokenizer token = new()
