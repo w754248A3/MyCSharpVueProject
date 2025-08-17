@@ -102,7 +102,7 @@ public partial class MainWindow : Window
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         parent_id INTEGER,
         text TEXT NOT NULL, 
-        FOREIGN KEY (parent_id) REFERENCES nodesTable(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+        FOREIGN KEY (parent_id) REFERENCES nodesTable(id) ON DELETE RESTRICT ON UPDATE NO ACTION
         );
         """);
 
@@ -137,6 +137,28 @@ public partial class MainWindow : Window
             tr.Commit();
 
             return id;
+        }
+    }
+
+    NodeData UpData(NodeData data){
+        using(var tr= _con.BeginTransaction()){
+
+
+           _con.GetTable<NodeData>().TableName("nodesTable")
+           .Where(p=> p.Id== data.Id)
+           .Set(p=>p.Text, data.Text)
+           .Update();
+           
+
+
+            _con.GetTable<SearchData>().TableName("textSearchTable")
+           .Where(p=> _ex.RowId(p)== data.Id)
+           .Set(p=>p.Value, data.Text)
+           .Update();
+
+            tr.Commit();
+
+            return data;
         }
     }
 
@@ -253,6 +275,17 @@ public partial class MainWindow : Window
 
             webView2.CoreWebView2.PostWebMessageAsString(s);
         }
+        else if(type == MessageType.UPDATA){
+
+            var obj = jsondoc.RootElement.GetProperty("value").Deserialize<NodeData>();
+
+            obj = UpData(obj);
+
+            
+            var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.UPDATA, Index= index, Value=obj});
+
+            webView2.CoreWebView2.PostWebMessageAsString(s);
+        }
         else{
             throw new IndexOutOfRangeException("没有这个消息类型");
         }
@@ -297,6 +330,9 @@ public partial class MainWindow : Window
         public const string QUERY = "QUERY";
 
         public const string SEARCH = "SEARCH";
+
+
+        public const string UPDATA = "UPDATA";
     }
 
     public class MessageData<T>{

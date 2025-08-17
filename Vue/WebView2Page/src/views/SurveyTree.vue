@@ -24,6 +24,7 @@
         <!--button-->
         <div class="node-button">
           <button @click="onAddNode(node.id)">Add Node</button>
+          <button @click="onUpNode(node.id, node.title)">UP Node</button>
         </div>
       </div>
 
@@ -39,7 +40,7 @@
 <script setup lang="ts">
 import { defineComponent, inject, reactive, ref } from "vue";
 import PopPage from "./PopPage.vue";
-import {type TableData, type NodeData, type Option, onFindChildNodeKey, onAddNodeKey} from "../mytype"
+import {type TableData, type NodeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey} from "../mytype"
 
 
 const isOpenPop =ref(false);
@@ -58,6 +59,10 @@ const findChildNode = inject(onFindChildNodeKey);
 
 const addNode = inject(onAddNodeKey);
 
+const upNode= inject(onUPNodeKey);
+if(!upNode){
+  throw new Error("upNode is not definde on ");
+}
 
 if(!addNode){
   throw new Error("addNode is not definde on ");
@@ -88,6 +93,15 @@ const outText = ref<(s:string)=> void>((s)=> {});
     }
   };
 
+  const flashUI = async(id:number)=>{
+    const index = displayedNodes.value.findIndex((n) => n.id === id);
+
+    const child = await findChildNode(id);
+    if (child) {
+      displayedNodes.value[index]= child;
+    }
+  };
+
   const handleSelect = async (node: NodeData, option: Option) => {
 
     
@@ -113,16 +127,18 @@ const outText = ref<(s:string)=> void>((s)=> {});
     }
   };
 
-  const onAddNode = (parentId:number)=>{
+  const onAddNode = async (parentId:number)=>{
 
     text.value="";
 
-    outText.value= (s)=>{
+    outText.value= async (s)=>{
 
       isOpenPop.value=false;
 
  
-      addNode(s, parentId);
+      await addNode(s, parentId);
+
+      flashUI(parentId);
     };
 
 
@@ -132,6 +148,26 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
   }
 
+
+  const onUpNode = (id:number, v:string)=>{
+    text.value=v;
+
+    outText.value= async (s)=>{
+
+      isOpenPop.value=false;
+      if(s && s !== v){
+        await upNode(id, s);
+        flashUI(id);
+      }
+ 
+      
+    };
+
+
+    isOpenPop.value=true;
+
+
+  };
 
   const toggleNode = (nodeId: number) => {
     collapsed[nodeId] = !collapsed[nodeId];

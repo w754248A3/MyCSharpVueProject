@@ -9,7 +9,7 @@ import PopPage from './views/PopPage.vue';
 import TabPage from './views/TabPage.vue';
 import SearchLayout from './views/SearchLayout.vue';
 import ListPage from './views/ListPage.vue';
-import { type ListItem, type TableData, type NodeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey } from './mytype';
+import { type ListItem, type TableData, type NodeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey } from './mytype';
 
 
 type FunctionMap = {
@@ -26,6 +26,11 @@ type FunctionMap = {
   SEARCH: {
     args: string;
     return: Promise<TableData[]>;
+  };
+
+  UPDATA: {
+    args: TableData;
+    return: Promise<TableData>;
   };
 
 };
@@ -58,6 +63,9 @@ const messageFunc = (() => {
     else if (obj.type === "SEARCH") {
       func(obj.value);
     }
+    else if (obj.type ===  "UPDATA") {
+      func(obj.value);
+    }
     else {
       throw new Error(`type is not define ${obj.type}`);
     }
@@ -87,6 +95,27 @@ const messageFunc = (() => {
   ): FunctionMap[K]["return"] {
 
     if (name === "ADDNODE") {
+
+      const data = args;
+      const index = getIndex();
+
+      return new Promise<NodeData>((res) => {
+
+        sendToDotNet({ type: name, index: index, value: data });
+
+        map.set(index, (data) => {
+
+
+
+          res(data);
+
+          console.log(data);
+        });
+
+      });
+
+    }
+    else if (name === "UPDATA") {
 
       const data = args;
       const index = getIndex();
@@ -377,10 +406,10 @@ function addNode(text: string, parentId: number) {
   }
 }
 
-function addNode2(text: string, parentId: number) {
+async function addNode2(text: string, parentId: number) {
   if (text) {
 
-    messageFunc("ADDNODE", {
+    return await messageFunc("ADDNODE", {
       id: 0,
 
       parentId: parentId,
@@ -388,6 +417,8 @@ function addNode2(text: string, parentId: number) {
       title: text
     })
   }
+
+  return null;
 }
 
 const isViewPop = ref(false);
@@ -487,13 +518,19 @@ async function onText() {
 
 }
 
+const upNode = async (id:number, text:string)=>{
 
+  return await messageFunc("UPDATA", {id:id, parentId:null, title:text});
+};
 
 
 provide(onAddNodeKey, addNode2);
 
 
 provide(onFindChildNodeKey, findChildNode2);
+
+
+provide(onUPNodeKey, upNode);
 
 </script>
 

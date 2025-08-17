@@ -36,6 +36,9 @@ export interface NodeData {
   options: Option[];
 }
 
-export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:number)=> void>
+export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:number)=> Promise<TableData | null>>
+
+
+export const onUPNodeKey = Symbol() as  InjectionKey<(id:number, text:string)=> Promise<TableData | null>>
 
 export const onFindChildNodeKey = Symbol() as  InjectionKey<(id:number)=> Promise<NodeData>>
