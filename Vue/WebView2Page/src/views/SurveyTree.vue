@@ -37,21 +37,38 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, reactive, ref } from "vue";
+import { defineComponent, inject, reactive, ref } from "vue";
 import PopPage from "./PopPage.vue";
-import type {TableData, NodeData, Option} from "../mytype"
+import {type TableData, type NodeData, type Option, onFindChildNodeKey, onAddNodeKey} from "../mytype"
 
 
 const isOpenPop =ref(false);
 
 
-const funcs = defineProps<{
-  getTableDataRootNode:(id:number)=> Promise<NodeData>,
-  findChildNode:(id:number)=>Promise<NodeData>,
-  addNode:(s:string, parentId:number)=> void
+const props = defineProps<{
   id:number
 
 }>();
+
+
+
+const findChildNode = inject(onFindChildNodeKey);
+
+
+
+const addNode = inject(onAddNodeKey);
+
+
+if(!addNode){
+  throw new Error("addNode is not definde on ");
+}
+
+if(!findChildNode){
+  
+  throw new Error("findChildNode is not definde on ");
+
+
+}
 
 
 const text = ref("");
@@ -64,7 +81,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const selected = reactive<Record<number, number | null>>({});
 
   const initRootNode = async () => {
-    const root = await funcs.getTableDataRootNode(funcs.id);
+    const root = await findChildNode(props.id);
     if (root) {
       displayedNodes.value = [root];
       collapsed[root.id] = false;
@@ -89,14 +106,14 @@ const outText = ref<(s:string)=> void>((s)=> {});
     selected[node.id] = option.id;
 
     // 找子节点
-    const child = await funcs.findChildNode(option.id);
+    const child = await findChildNode(option.id);
     if (child) {
       collapsed[child.id] = false;
       displayedNodes.value.push(child);
     }
   };
 
-  function onAddNode(parentId:number){
+  const onAddNode = (parentId:number)=>{
 
     text.value="";
 
@@ -104,8 +121,8 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
       isOpenPop.value=false;
 
-
-      funcs.addNode(s, parentId);
+ 
+      addNode(s, parentId);
     };
 
 
@@ -114,6 +131,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
 
   }
+
 
   const toggleNode = (nodeId: number) => {
     collapsed[nodeId] = !collapsed[nodeId];

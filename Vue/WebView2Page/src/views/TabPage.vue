@@ -20,9 +20,6 @@
         v-for="tab in tabs"
         :key="tab.index"
         v-show="activeTab === tab.index"
-        :add-node="funcs.addNode"
-        :find-child-node="funcs.findChildNode"
-        :get-table-data-root-node="funcs.getTableDataRootNode"
         :id="tab.id"
       />
     </div>
@@ -36,32 +33,35 @@ import type {TableData, NodeData, Option, ListItem, Tabs} from "../mytype"
 
 
 const funcs = defineProps<{
-  getTableDataRootNode:(id:number)=> Promise<NodeData>,
-  findChildNode:(id:number)=>Promise<NodeData>,
-  addNode:(s:string, parentId:number)=> void,
-  tabs:Tabs[]
+  addTabValue:ListItem|null
 }>();
 
-
+  const tabs = ref<Tabs[]>([]);
 
   const activeTab = ref(-1);
   
   const removeTab = (index: number) => {
-    const v = funcs.tabs.findIndex(t => t.index === index);
+    const v = tabs.value.findIndex(t => t.index === index);
     if (v !== -1) {
-      funcs.tabs.splice(v, 1);
+      tabs.value.splice(v, 1);
       // 如果删除的是当前激活的标签，切换到其他标签
-      if (activeTab.value === index && funcs.tabs.length > 0) {
-        activeTab.value = funcs.tabs[Math.max(0, v - 1)].index;
+      if (activeTab.value === index && tabs.value.length > 0) {
+        activeTab.value = tabs.value[Math.max(0, v - 1)].index;
       }
     }
   };
 
-
+  let tabIndex = 0;
   watch(
-  () => funcs.tabs,
-  () => {
-    
+  () => funcs.addTabValue,
+  (newValue, oldValue) => {
+    if(newValue){
+
+      tabIndex++;
+      tabs.value.push({text:newValue.text, id:newValue.id, index:tabIndex});
+
+      activeTab.value= tabs.value.length;
+    }
   },
   { deep: true }
 )

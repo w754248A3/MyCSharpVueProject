@@ -1,3 +1,4 @@
+import type { InjectionKey } from "vue"
 
 export interface ListItem {
   text: string
@@ -34,3 +35,7 @@ export interface NodeData {
   title: string;
   options: Option[];
 }
+
+export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:number)=> void>
+
+export const onFindChildNodeKey = Symbol() as  InjectionKey<(id:number)=> Promise<NodeData>>
