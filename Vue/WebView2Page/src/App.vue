@@ -9,28 +9,28 @@ import PopPage from './views/PopPage.vue';
 import TabPage from './views/TabPage.vue';
 import SearchLayout from './views/SearchLayout.vue';
 import ListPage from './views/ListPage.vue';
-import { type ListItem, type TableData, type NodeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey } from './mytype';
+import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey } from './mytype';
 
 
 type FunctionMap = {
   ADDNODE: {
-    args: TableData;
-    return: Promise<TableData>;
+    args: NodeData;
+    return: Promise<NodeData>;
   };
 
   QUERY: {
     args: number;
-    return: Promise<{ root: TableData, child: TableData[] }>;
+    return: Promise<{ root: NodeData, child: NodeData[] }>;
   };
 
   SEARCH: {
     args: string;
-    return: Promise<TableData[]>;
+    return: Promise<NodeData[]>;
   };
 
   UPDATA: {
-    args: TableData;
-    return: Promise<TableData>;
+    args: NodeData;
+    return: Promise<NodeData>;
   };
 
 };
@@ -52,24 +52,7 @@ const messageFunc = (() => {
 
     map.delete(obj.index);
 
-    if (obj.type === "ADDNODE") {
-
-      func(obj.value);
-
-    }
-    else if (obj.type === "QUERY") {
-      func(obj.value);
-    }
-    else if (obj.type === "SEARCH") {
-      func(obj.value);
-    }
-    else if (obj.type ===  "UPDATA") {
-      func(obj.value);
-    }
-    else {
-      throw new Error(`type is not define ${obj.type}`);
-    }
-
+    func(obj);
 
 
   });
@@ -79,8 +62,35 @@ const messageFunc = (() => {
     ((<any>window).chrome).webview.postMessage(message);
   }
 
+  const sendToDotNetWithTypeIndex = (<T>(type: string, value: any) => {
 
-  const map = new Map<number, (data: any) => void>();
+    const index = getIndex();
+
+    return new Promise<T>((res) => {
+
+      sendToDotNet({ type: type, index: index, value: value });
+
+      map.set(index, (data) => {
+
+
+
+        if (data.type !== type) {
+          throw new Error("map get value type error");
+        }
+
+        res(data.value);
+
+
+
+      });
+
+
+
+    });
+  });
+
+
+  const map = new Map<number, (data: MessageData) => void>();
 
   let index = 0;
 
@@ -89,102 +99,15 @@ const messageFunc = (() => {
 
     return n;
   }
-  function f<K extends keyof FunctionMap>(
+
+
+  return <K extends keyof FunctionMap, TRWP = Awaited<FunctionMap[K]["return"]>>(
     name: K,
-    args: FunctionMap[K]["args"]
-  ): FunctionMap[K]["return"] {
+    args: FunctionMap[K]["args"]): Promise<TRWP> => {
 
-    if (name === "ADDNODE") {
+    return sendToDotNetWithTypeIndex(name, args);
 
-      const data = args;
-      const index = getIndex();
-
-      return new Promise<NodeData>((res) => {
-
-        sendToDotNet({ type: name, index: index, value: data });
-
-        map.set(index, (data) => {
-
-
-
-          res(data);
-
-          console.log(data);
-        });
-
-      });
-
-    }
-    else if (name === "UPDATA") {
-
-      const data = args;
-      const index = getIndex();
-
-      return new Promise<NodeData>((res) => {
-
-        sendToDotNet({ type: name, index: index, value: data });
-
-        map.set(index, (data) => {
-
-
-
-          res(data);
-
-          console.log(data);
-        });
-
-      });
-
-    }
-    else if (name == "QUERY") {
-
-      const id = args;
-      const index = getIndex();
-      return new Promise<{ root: NodeData, child: NodeData[] }>((res) => {
-
-        sendToDotNet({ type: name, index: index, value: id });
-
-        map.set(index, (data) => {
-
-
-
-          res(data);
-
-          console.log(data);
-        });
-
-      });
-
-
-    }
-    else if (name == "SEARCH") {
-
-      const searchText = args;
-      const index = getIndex();
-      return new Promise<NodeData>((res) => {
-
-        sendToDotNet({ type: name, index: index, value: searchText });
-
-        map.set(index, (data) => {
-
-
-
-          res(data);
-
-          console.log(data);
-        });
-
-      });
-
-
-    }
-    else {
-      throw new Error("not message type");
-    }
   };
-
-
-  return f;
 
 })();
 
@@ -291,9 +214,9 @@ async function onText() {
 
 }
 
-const upNode = async (id:number, text:string)=>{
+const upNode = async (id: number, text: string) => {
 
-  return await messageFunc("UPDATA", {id:id, parentId:null, title:text});
+  return await messageFunc("UPDATA", { id: id, parentId: null, title: text });
 };
 
 

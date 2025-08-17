@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { defineComponent, inject, reactive, ref } from "vue";
 import PopPage from "./PopPage.vue";
-import {type TableData, type NodeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey} from "../mytype"
+import {type NodeData, type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey} from "../mytype"
 
 
 const isOpenPop =ref(false);
@@ -81,7 +81,7 @@ const text = ref("");
 const outText = ref<(s:string)=> void>((s)=> {});
 
 
-  const displayedNodes = ref<NodeData[]>([]);
+  const displayedNodes = ref<ViewTreeData[]>([]);
   const collapsed = reactive<Record<number, boolean>>({});
   const selected = reactive<Record<number, number | null>>({});
 
@@ -102,7 +102,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
     }
   };
 
-  const handleSelect = async (node: NodeData, option: Option) => {
+  const handleSelect = async (node: ViewTreeData, option: Option) => {
 
     
     // 删除当前节点之后的所有节点

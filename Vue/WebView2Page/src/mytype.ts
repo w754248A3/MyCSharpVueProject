@@ -11,7 +11,7 @@ export interface Tabs {
   index:number
 }
 
-export interface TableData{
+export interface NodeData{
   id: number;
   parentId: number | null;
   title: string;
@@ -29,16 +29,16 @@ export interface Option {
   label: string;
 }
 
-export interface NodeData {
+export interface ViewTreeData {
   id: number;
   parentId: number | null;
   title: string;
   options: Option[];
 }
 
-export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:number)=> Promise<TableData | null>>
+export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:number)=> Promise<NodeData | null>>
 
 
-export const onUPNodeKey = Symbol() as  InjectionKey<(id:number, text:string)=> Promise<TableData | null>>
+export const onUPNodeKey = Symbol() as  InjectionKey<(id:number, text:string)=> Promise<NodeData | null>>
 
-export const onFindChildNodeKey = Symbol() as  InjectionKey<(id:number)=> Promise<NodeData>>
+export const onFindChildNodeKey = Symbol() as  InjectionKey<(id:number)=> Promise<ViewTreeData>>

@@ -29,10 +29,10 @@
 <script setup lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import SurveyTree from './SurveyTree.vue';
-import type {TableData, NodeData, Option, ListItem, Tabs} from "../mytype"
+import type {NodeData, ViewTreeData, Option, ListItem, Tabs} from "../mytype"
 
 
-const funcs = defineProps<{
+const props = defineProps<{
   addTabValue:ListItem|null
 }>();
 
@@ -53,7 +53,7 @@ const funcs = defineProps<{
 
   let tabIndex = 0;
   watch(
-  () => funcs.addTabValue,
+  () => props.addTabValue,
   (newValue, oldValue) => {
     if(newValue){
 
