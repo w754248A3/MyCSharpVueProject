@@ -17,6 +17,10 @@
                 
                 <Separator/>
                 <MenuItem Header="_Test" Click="Test_Click"/>
+                <Separator/>
+                <MenuItem Header="_导出" Click="Export_Click"/>
+                <Separator/>
+                <MenuItem Header="_导入" Click="Import_Click"/>
             </MenuItem>
 
         </Menu>

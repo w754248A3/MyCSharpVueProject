@@ -32,19 +32,13 @@ public partial class MainWindow : Window
 {
 
 
-    public class NodesTable
-    {
-        
-        public int Id{get;set;}
-    }
-
     public MainWindow()
     {
         InitializeComponent();
 
 
         InitData();
-        Init();
+        InitWebView2();
 
         
     }
@@ -215,6 +209,30 @@ public partial class MainWindow : Window
 
     }
 
+
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        var vs = _con.GetTable<NodeData>().TableName("nodesTable").ToList();
+
+        var json = JsonSerializer.Serialize(vs);
+
+
+        File.WriteAllText("json_data.json", json, Encoding.UTF8);
+
+    }
+
+    private void Import_Click(object sender, RoutedEventArgs e)
+    {
+        
+        
+
+
+        var json = File.ReadAllText("json_data.json",Encoding.UTF8);
+
+        var vs = JsonSerializer.Deserialize<List<NodeData>>(json);
+
+    }
+
     void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e){
 
         using var jsondoc = JsonDocument.Parse(e.WebMessageAsJson);
@@ -291,9 +309,7 @@ public partial class MainWindow : Window
         }
 
 
-        
-
-    //webView2.CoreWebView2.PostWebMessageAsString(message);
+    
     }
 
     public class NodeData{
@@ -347,7 +363,7 @@ public partial class MainWindow : Window
 
     }
 
-    async void Init(){
+    async void InitWebView2(){
 
 
         string GetUserDataPath(){
@@ -371,9 +387,6 @@ public partial class MainWindow : Window
         webView2.CoreWebView2.SetVirtualHostNameToFolderMapping("mypage.test", 
          @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist", CoreWebView2HostResourceAccessKind.DenyCors);
         webView2.CoreWebView2.Navigate("https://mypage.test/index.html");
-
-
-        //webView2.Source= new Uri(@"C:\Users\PC\cpp\myvue\fileView\dist\index.html");
 
         webView2.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 

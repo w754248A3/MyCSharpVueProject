@@ -189,21 +189,6 @@ const messageFunc = (() => {
 })();
 
 
-let id = 0;
-const handleSearch = (value: string) => {
-  console.log("搜索内容变化：", value);
-  messageFunc("SEARCH", value);
-  const fvs = tableData.filter(v => v.parentId === null).filter(v => v.title.indexOf(value) !== -1)
-    .map(v => { return { text: v.title, id: v.id } });
-
-  data.value = fvs;
-
-
-  //data.value.push({text:value,id:id++});
-
-  listIsView.value = true;
-};
-
 
 const handleSearch2 = async (value: string) => {
   console.log("搜索内容变化：", value);
@@ -229,145 +214,12 @@ const onSelect = (v: ListItem) => {
   addTabValue.value = v;
 
 
-  console.log(v);
-
 };
 
 const data = ref<ListItem[]>([]);
 
 const listIsView = ref(false);
 
-
-let tableData: TableData[] = [
-
-  {
-    id: 1,
-    parentId: null,
-    title: "请选择年份范围",
-  },
-
-  {
-    id: 2,
-    parentId: 1,
-    title: "2000年-2005年",
-
-  },
-  {
-    id: 3,
-    parentId: 1,
-    title: "2006年-2010年",
-
-  },
-  {
-    id: 4,
-    parentId: 1,
-    title: "2011年-2015年",
-
-  },
-
-  {
-    id: 5,
-    parentId: 4,
-    title: "手机",
-
-  },
-
-  {
-    id: 6,
-    parentId: 4,
-    title: "冰箱",
-
-  },
-  {
-    id: 7,
-    parentId: 4,
-    title: "空调",
-
-  },
-
-  {
-    id: 8,
-    parentId: 5,
-    title: "CPU",
-
-  },
-
-  {
-    id: 9,
-    parentId: 5,
-    title: "GPU",
-
-  },
-  {
-    id: 10,
-    parentId: 5,
-    title: "RAM",
-
-  },
-
-
-];
-
-const key = "datajsong67ssfds";
-
-const json = window.localStorage.getItem(key);
-
-if (json) {
-
-  tableData = JSON.parse(json);
-}
-
-
-function getTableDataRootNode(id: number): NodeData {
-  const vs = tableData.filter(v => v.parentId === null);
-
-  if (vs.length === 0) {
-    console.log(vs);
-    throw new Error("find root node length not 1");
-  }
-
-  const rootNode = vs[0];
-
-
-  const rootNodeChildNodes = tableData.filter(v => v.parentId === rootNode.id);
-
-  return {
-    id: rootNode.id,
-    parentId: rootNode.parentId,
-    title: rootNode.title,
-
-    options: rootNodeChildNodes.map(v => { return { id: v.id, label: v.title } })
-  };
-
-
-}
-
-
-function findChildNode(id: number) {
-  const vs = tableData.filter(v => v.id === id);
-
-  messageFunc("QUERY", id);
-
-  if (vs.length !== 1) {
-    console.log(vs);
-    throw new Error("find child node length not 1");
-  }
-
-  const childNode = vs[0];
-
-
-  const childNodeChildNodes = tableData.filter(v => v.parentId === childNode.id);
-
-  return {
-    id: childNode.id,
-    parentId: childNode.parentId,
-    title: childNode.title,
-
-    options: childNodeChildNodes.map(v => { return { id: v.id, label: v.title } })
-  };
-
-
-}
 
 async function findChildNode2(id: number) {
 
@@ -383,27 +235,6 @@ async function findChildNode2(id: number) {
   };
 
 
-}
-
-function addNode(text: string, parentId: number) {
-  if (text) {
-    let vs = tableData.map(v => v.id);
-    const newID = Math.max(...vs) + 1;
-
-    tableData.push({
-      id: newID,
-
-      parentId: parentId,
-
-      title: text
-    });
-
-
-    const json = JSON.stringify(tableData);
-
-
-    window.localStorage.setItem(key, json);
-  }
 }
 
 async function addNode2(text: string, parentId: number) {
@@ -422,40 +253,6 @@ async function addNode2(text: string, parentId: number) {
 }
 
 const isViewPop = ref(false);
-
-function onInputOverText(text: string) {
-  isViewPop.value = false;
-
-
-
-  if (text) {
-    let vs = tableData.map(v => v.id);
-    const newID = Math.max(...vs) + 1;
-
-    const data = {
-      id: newID,
-
-      parentId: null,
-
-      title: text
-    };
-
-    tableData.push(data);
-
-    messageFunc("ADDNODE", data);
-
-
-    const json = JSON.stringify(tableData);
-
-
-    window.localStorage.setItem(key, json);
-
-  }
-
-
-
-}
-
 
 
 function onInputOverText2(text: string) {
@@ -490,30 +287,6 @@ function onAddRoot() {
 
 
 async function onText() {
-
-  const vs = <typeof tableData>JSON.parse(JSON.stringify(tableData));
-  const map = new Map<number, number>();
-
-  for (const element of vs) {
-
-    if (element.parentId) {
-      const pid = map.get(element.parentId);
-
-      if (pid) {
-        element.parentId = pid;
-      }
-    }
-
-
-    const id = element.id
-    const obj = await messageFunc("ADDNODE", element);
-
-    map.set(id, obj.id);
-
-
-
-
-  }
 
 
 }
