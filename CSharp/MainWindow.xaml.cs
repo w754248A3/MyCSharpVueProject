@@ -201,6 +201,21 @@ public partial class MainWindow : Window
 
     }
 
+    List<NodeData> SearchFunc(){
+
+        var vs = _con.GetTable<NodeData>().TableName("nodesTable")
+        .Where(p=> p.Parent_Id == null)
+        .OrderByDescending(p=> p.Id)
+        .Take(100)
+        .ToList();
+
+
+
+        return vs;
+
+
+    }
+
     private void Test_Click(object sender, RoutedEventArgs e)
     {
         
@@ -271,23 +286,20 @@ public partial class MainWindow : Window
 
             List<NodeData> vs;
 
-            if(!string.IsNullOrWhiteSpace(searchText)){
-                try{
-                vs = SearchFunc(searchText??"");
-                }
-                catch(SqlException ex){
-                    vs = new List<NodeData>();
-                }
+            try{
 
+                if(string.IsNullOrWhiteSpace(searchText)){
+                    vs = SearchFunc();
+                }
+                else{
+                    vs = SearchFunc(searchText);
+                }
             }
-            else{
+            catch(SqlException ex){
                 vs = new List<NodeData>();
             }
 
-           
-            
-
-           
+               
             var s = JsonSerializer.Serialize(new MessageData<List<NodeData>>{Type= MessageType.SEARCH, Index= index, Value=vs});
 
 

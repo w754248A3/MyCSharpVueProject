@@ -6,6 +6,7 @@
       class="search-input"
       v-model="searchText"
       @input="onSearchInput"
+      @focus="onSearchInput"
       placeholder="请输入搜索内容..."
     />
    
