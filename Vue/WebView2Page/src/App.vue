@@ -9,7 +9,7 @@ import PopPage from './views/PopPage.vue';
 import TabPage from './views/TabPage.vue';
 import SearchLayout from './views/SearchLayout.vue';
 import ListPage from './views/ListPage.vue';
-import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey } from './mytype';
+import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey } from './mytype';
 
 
 type FunctionMap = {
@@ -220,7 +220,17 @@ const upNode = async (id: number, text: string) => {
 };
 
 
+const isViewAddAndUpDataButton = ref(false);
+
+const onViewAddAndUpDataButton= ()=>{
+
+  isViewAddAndUpDataButton.value = !isViewAddAndUpDataButton.value;
+
+};
+
 provide(onAddNodeKey, addNode2);
+
+provide(isViewAddAndUpDataButtonKey, isViewAddAndUpDataButton);
 
 
 provide(onFindChildNodeKey, findChildNode2);
@@ -236,6 +246,7 @@ provide(onUPNodeKey, upNode);
 <template>
   <button @click="onText">测试</button>
   <button @click="onAddRoot">添加根</button>
+  <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
   <SearchLayout @search-change="handleSearch2">
     <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
     <TabPage :add-tab-value="addTabValue" v-show="!listIsView"></TabPage>

@@ -22,7 +22,7 @@
         </label>
 
         <!--button-->
-        <div class="node-button">
+        <div v-show="isViewAddAndUpDataButton" class="node-button">
           <button @click="onAddNode(node.id)">Add Node</button>
           <button @click="onUpNode(node.id, node.title)">UP Node</button>
         </div>
@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { defineComponent, inject, reactive, ref } from "vue";
 import PopPage from "./PopPage.vue";
-import {type NodeData, type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey} from "../mytype"
+import {type NodeData, type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey} from "../mytype"
 
 
 const isOpenPop =ref(false);
@@ -60,6 +60,13 @@ const findChildNode = inject(onFindChildNodeKey);
 const addNode = inject(onAddNodeKey);
 
 const upNode= inject(onUPNodeKey);
+
+const isViewAddAndUpDataButton = inject(isViewAddAndUpDataButtonKey);
+
+if(!isViewAddAndUpDataButton){
+  throw new Error("isViewAddAndUpDataButton is not definde on ");
+}
+
 if(!upNode){
   throw new Error("upNode is not definde on ");
 }

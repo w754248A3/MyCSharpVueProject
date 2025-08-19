@@ -1,4 +1,4 @@
-import type { InjectionKey } from "vue"
+import type { InjectionKey, Ref } from "vue"
 
 export interface ListItem {
   text: string
@@ -42,3 +42,5 @@ export const onAddNodeKey = Symbol() as  InjectionKey<(text:string, parentId:num
 export const onUPNodeKey = Symbol() as  InjectionKey<(id:number, text:string)=> Promise<NodeData | null>>
 
 export const onFindChildNodeKey = Symbol() as  InjectionKey<(id:number)=> Promise<ViewTreeData>>
+
+export const isViewAddAndUpDataButtonKey = Symbol() as  InjectionKey<Ref<boolean, boolean>>
