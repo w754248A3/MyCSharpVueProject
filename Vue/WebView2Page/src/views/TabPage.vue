@@ -80,12 +80,13 @@ const props = defineProps<{
 }
 
 .tabs button{
-  flex: 1;                  /* 关键：占据剩余空间 */
-  min-width: 0;             /* 关键：允许收缩到小于内容宽度 */
-  white-space: nowrap;      /* 禁止文本换行 */
-  overflow: hidden;         /* 隐藏溢出内容 */
-  text-overflow: ellipsis;  /* 溢出时显示省略号 */
-  padding-right: 8px;       /* 与按钮间距 */
+  flex:initial;                 
+  min-width: 5px;  
+  max-width: 150px;            
+  white-space: nowrap;      
+  overflow: hidden;        
+  text-overflow: ellipsis; 
+  padding-right: 2px;      
 }
 
 .removeButton{
