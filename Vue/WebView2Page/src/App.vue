@@ -244,15 +244,38 @@ provide(onUPNodeKey, upNode);
 
 
 <template>
-  <button @click="onText">测试</button>
-  <button @click="onAddRoot">添加根</button>
-  <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
-  <SearchLayout @search-change="handleSearch2">
-    <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
-    <TabPage :add-tab-value="addTabValue" v-show="!listIsView"></TabPage>
-  </SearchLayout>
-  <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
+  <div class="app-root">
+    <div class="app-search">
+      <button @click="onText">测试</button>
+      <button @click="onAddRoot">添加根</button>
+      <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
+      <SearchLayout @search-change="handleSearch2"></SearchLayout>
+    </div>
+    <div class="app-content">
+      <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
+      <TabPage :add-tab-value="addTabValue" v-show="!listIsView"></TabPage>
+    </div>
+    <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
+  </div>
 </template>
 
 
-<style scoped></style>
+<style scoped>
+.app-root{
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-search{
+  flex: 0 0 auto;
+ 
+}
+
+.app-content{
+  flex: 1 auto;
+}
+
+</style>

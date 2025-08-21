@@ -9,12 +9,6 @@
       @focus="onSearchInput"
       placeholder="请输入搜索内容..."
     />
-   
-    <!-- 下方内容区（插槽） -->
-    <div class="content">
-      <slot></slot>
-    </div>
-    
   </div>
 </template>
 
@@ -68,15 +62,4 @@ const onAddRoot=()=>{
   box-sizing: border-box;
 }
 
-.add-button{
-  flex: 0 0 auto;
-}
-
-.content {
-  flex: 1 1 auto;
-  overflow: auto;
-  padding: 8px;
-  box-sizing: border-box;
-  border-top: 1px solid #eee;
-}
 </style>
