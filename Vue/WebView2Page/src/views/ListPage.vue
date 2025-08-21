@@ -47,10 +47,15 @@ function handleClick(item: ListItem, index: number) {
 
 <style scoped>
 .list-container {
-  width: 100%;
-  height: 100%;
+  flex: 1;
+ 
+  display: flex;
+  flex-direction: column;
+
+  min-height: 0;
   overflow: auto;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  margin-bottom: 80px;
 }
 
 .list {

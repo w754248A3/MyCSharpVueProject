@@ -26,9 +26,7 @@
           <button @click="onAddNode(node.id)">Add Node</button>
           <button @click="onUpNode(node.id, node.title)">UP Node</button>
         </div>
-      </div>
-
-      
+      </div>   
     </div>
     <div v-if="isOpenPop">
     <PopPage :in-text="text" @on-confirm-text="outText"></PopPage>
@@ -186,8 +184,18 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
 <style scoped>
 .survey-tree {
+  flex: 1;
+ 
+  display: flex;
+  flex-direction: column;
+
+  min-height: 0;
+  overflow: auto;
+
   font-family: Arial, sans-serif;
   padding: 10px;
+
+  margin-bottom: 80px;
 }
 
 .node-section {
@@ -201,7 +209,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   cursor: pointer;
   font-weight: bold;
   display: flex;
-  justify-content: space-between;
+ 
   white-space: pre-wrap;
 }
 
@@ -223,4 +231,5 @@ const outText = ref<(s:string)=> void>((s)=> {});
 .option-text {
   margin-left: 8px;
 }
+
 </style>

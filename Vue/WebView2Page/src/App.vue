@@ -262,11 +262,16 @@ provide(onUPNodeKey, upNode);
 
 <style scoped>
 .app-root{
-
+  position: fixed;
+  top: 0px;
+  left: 0px;
   display: flex;
   flex-direction: column;
   width: 100%;
+  height:100%;
+
   overflow: hidden;
+
 }
 
 .app-search{
@@ -275,7 +280,12 @@ provide(onUPNodeKey, upNode);
 }
 
 .app-content{
-  flex: 1 auto;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%
 }
 
 </style>

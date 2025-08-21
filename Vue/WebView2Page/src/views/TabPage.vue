@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="tabpage-root">
     <!-- 标签页切换 -->
     <div class="tabs">
       <button
@@ -68,7 +68,19 @@ const props = defineProps<{
 </script>
 
 <style scoped>
+
+.tabpage-root{
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%
+}
+
 .tabs {
+  flex: 0 0 auto;
+  
   display: flex;
   gap: 8px;
   overflow: hidden; 
@@ -94,6 +106,15 @@ const props = defineProps<{
 }
 
 .tab-content {
+  flex: 1;
   margin-top: 16px;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  
+  overflow: auto;
+  
 }
 </style>
