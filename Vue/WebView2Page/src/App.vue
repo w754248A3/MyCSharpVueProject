@@ -9,6 +9,7 @@ import PopPage from './views/PopPage.vue';
 import TabPage from './views/TabPage.vue';
 import SearchLayout from './views/SearchLayout.vue';
 import ListPage from './views/ListPage.vue';
+import RootNodeListPage from "./views/RootNodeListPage.vue";
 import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey } from './mytype';
 
 
@@ -114,11 +115,11 @@ const messageFunc = (() => {
 
 
 const handleSearch2 = async (value: string) => {
-  console.log("搜索内容变化：", value);
+ 
   const vs = await messageFunc("SEARCH", value);
   const fvs = vs.map(v => { return { text: v.title, id: v.id } });
 
-  data.value = fvs;
+  listPageData.value = fvs;
 
 
   //data.value.push({text:value,id:id++});
@@ -139,7 +140,9 @@ const onSelect = (v: ListItem) => {
 
 };
 
-const data = ref<ListItem[]>([]);
+const listPageData = ref<ListItem[]>([]);
+
+const rootNodeListPageData = ref<ListItem[]>([]);
 
 const listIsView = ref(false);
 
@@ -228,6 +231,22 @@ const onViewAddAndUpDataButton= ()=>{
 
 };
 
+
+const initRootNodeListPageData= async ()=>{
+
+  const vs = await messageFunc("SEARCH", "");
+  const fvs = vs.map(v => { return { text: v.title, id: v.id } });
+
+  rootNodeListPageData.value=fvs;
+
+
+
+
+};
+
+
+setTimeout(initRootNodeListPageData, 1000);
+
 provide(onAddNodeKey, addNode2);
 
 provide(isViewAddAndUpDataButtonKey, isViewAddAndUpDataButton);
@@ -245,16 +264,22 @@ provide(onUPNodeKey, upNode);
 
 <template>
   <div class="app-root">
-    <div class="app-search">
-      <button @click="onText">测试</button>
-      <button @click="onAddRoot">添加根</button>
-      <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
-      <SearchLayout @search-change="handleSearch2"></SearchLayout>
+    <div class="left-e">
+      <RootNodeListPage :items="rootNodeListPageData" @item-click="onSelect"></RootNodeListPage>
     </div>
-    <div class="app-content">
-      <ListPage v-show="listIsView" :items="data" @item-click="onSelect"></ListPage>
-      <TabPage :add-tab-value="addTabValue" v-show="!listIsView"></TabPage>
+    <div class="right-e">
+      <div class="app-search">
+        <button @click="onText">测试</button>
+        <button @click="onAddRoot">添加根</button>
+        <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
+        <SearchLayout @search-change="handleSearch2"></SearchLayout>
+      </div>
+      <div class="app-content">
+        <ListPage v-show="listIsView" :items="listPageData" @item-click="onSelect"></ListPage>
+        <TabPage :add-tab-value="addTabValue" v-show="!listIsView"></TabPage>
+      </div>
     </div>
+    
     <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
   </div>
 </template>
@@ -266,13 +291,33 @@ provide(onUPNodeKey, upNode);
   top: 0px;
   left: 0px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   width: 100%;
   height:100%;
 
   overflow: hidden;
 
 }
+
+.left-e{
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height:100%;
+}
+
+.right-e{
+  flex: 7;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height:100%;
+}
+
 
 .app-search{
   flex: 0 0 auto;
