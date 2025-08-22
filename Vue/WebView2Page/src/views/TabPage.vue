@@ -2,6 +2,7 @@
   <div class="tabpage-root">
     <!-- 标签页切换 -->
     <div class="tabs">
+      <button @click="closeAllTab">关闭所有标签</button>
       <button
         v-for="tab in tabs"
         :key="tab.index"
@@ -41,6 +42,14 @@ const props = defineProps<{
   const activeTab = ref(-1);
   
   const removeTab = (index: number) => {
+
+    if(!window.confirm("确定关闭这个标签吗?")){
+      return;
+    }
+
+
+
+
     const v = tabs.value.findIndex(t => t.index === index);
     if (v !== -1) {
       tabs.value.splice(v, 1);
@@ -49,6 +58,18 @@ const props = defineProps<{
         activeTab.value = tabs.value[Math.max(0, v - 1)].index;
       }
     }
+  };
+
+  const closeAllTab = ()=>{
+
+     if(!window.confirm("确定关闭所有标签吗?")){
+      return;
+    }
+
+    tabs.value = [];
+
+    activeTab.value= 0;
+
   };
 
   let tabIndex = 0;
@@ -60,7 +81,7 @@ const props = defineProps<{
       tabIndex++;
       tabs.value.push({text:newValue.text, id:newValue.id, index:tabIndex});
 
-      activeTab.value= tabs.value.length;
+      activeTab.value= tabIndex;
     }
   },
   { deep: true }
