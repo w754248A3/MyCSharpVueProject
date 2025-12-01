@@ -69,7 +69,7 @@ const props = defineProps<{
 
     tabs.value = [];
 
-    activeTab.value= 0;
+    activeTab.value= -1;
 
   };
 
