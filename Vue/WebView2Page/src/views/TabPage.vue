@@ -245,17 +245,40 @@ const props = defineProps<{
   flex-direction: column;
   width: 100%;
   height: 100%;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
   padding: 16px;
   background: #ffffff;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.2s ease;
+  /* 确保滚动条始终显示 */
+  scrollbar-width: thin;
+  scrollbar-color: #c0c4cc #f5f7fa;
 }
 
 .tab-content.active {
   visibility: visible;
   opacity: 1;
+}
+
+/* WebKit 浏览器滚动条样式 */
+.tab-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
 }
 </style>

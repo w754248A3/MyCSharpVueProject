@@ -269,10 +269,10 @@ provide(onUPNodeKey, upNode);
     </div>
     <div class="right-e">
       <div class="app-search">
-        <button @click="onText">测试</button>
+        <SearchLayout @search-change="handleSearch2"></SearchLayout> 
         <button @click="onAddRoot">添加根</button>
         <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
-        <SearchLayout @search-change="handleSearch2"></SearchLayout>
+        <button @click="onText">测试</button>
       </div>
       <div class="app-content">
         <ListPage v-show="listIsView" :items="listPageData" @item-click="onSelect"></ListPage>
