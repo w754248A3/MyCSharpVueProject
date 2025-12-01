@@ -184,14 +184,11 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
 <style scoped>
 .survey-tree {
-  flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  overflow: auto;
+  overflow: visible;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  padding: 16px;
-  margin-bottom: 80px;
 }
 
 .node-section {
@@ -201,7 +198,8 @@ const outText = ref<(s:string)=> void>((s)=> {});
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 .node-section:hover {
@@ -274,6 +272,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
 .options {
   padding: 16px;
   background: #ffffff;
+  overflow: visible;
 }
 
 .option-item {
