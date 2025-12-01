@@ -15,13 +15,15 @@
     </div>
 
     <!-- 标签页内容 -->
-    <div class="tab-content">
-      <SurveyTree
+    <div class="tab-content-wrapper">
+      <div
         v-for="tab in tabs"
         :key="tab.index"
-        v-show="activeTab === tab.index"
-        :id="tab.id"
-      />
+        class="tab-content"
+        :class="{ active: activeTab === tab.index }"
+      >
+        <SurveyTree :id="tab.id" />
+      </div>
     </div>
   </div>
 </template>
@@ -222,16 +224,38 @@ const props = defineProps<{
   transform: translateY(-50%) scale(1.1);
 }
 
-.tab-content {
+.tab-content-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px;
   background: #ffffff;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tab-content.active {
+  visibility: visible;
+  opacity: 1;
 }
 </style>
