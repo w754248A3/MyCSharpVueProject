@@ -2,8 +2,8 @@
   <div class="survey-tree">
     <div v-for="(node, index) in displayedNodes" :key="node.id" class="node-section">
       <!-- 标题 -->
-      <div class="node-title" @click="toggleNode(node.id)">
-        {{ node.title }}
+      <div class="node-title" @click="handleTitleClick(node.id)">
+        <span class="title-text">{{ node.title }}</span>
         
         <span class="toggle-icon">{{ collapsed[node.id] ? "▼" : "▲" }}</span>
       </div>
@@ -178,6 +178,17 @@ const outText = ref<(s:string)=> void>((s)=> {});
     collapsed[nodeId] = !collapsed[nodeId];
   };
 
+  const handleTitleClick = (nodeId: number) => {
+    // 检查是否有文本被选中
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) {
+      // 如果有文本被选中，不触发折叠
+      return;
+    }
+    // 如果没有文本被选中，触发折叠
+    toggleNode(nodeId);
+  };
+
   initRootNode();
 
 </script>
@@ -219,7 +230,11 @@ const outText = ref<(s:string)=> void>((s)=> {});
   background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
   border-bottom: 1px solid #e4e7ed;
   transition: all 0.2s ease;
-  user-select: none;
+}
+
+.title-text {
+  flex: 1;
+  user-select: text;
 }
 
 .node-title:hover {
