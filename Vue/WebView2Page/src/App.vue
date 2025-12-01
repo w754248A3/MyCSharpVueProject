@@ -294,43 +294,71 @@ provide(onUPNodeKey, upNode);
   flex-direction: row;
   width: 100%;
   height:100%;
-
   overflow: hidden;
-
+  background: #f5f7fa;
 }
 
 .left-e{
-
   flex: 1;
-
   display: flex;
   flex-direction: column;
   width: 100%;
   height:100%;
+  background: #ffffff;
+  border-right: 1px solid #e4e7ed;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
 .right-e{
   flex: 7;
-
   display: flex;
   flex-direction: column;
   width: 100%;
   height:100%;
+  background: #f5f7fa;
 }
-
 
 .app-search{
   flex: 0 0 auto;
- 
+  padding: 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.app-search button {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.app-search button:hover {
+  background: #ecf5ff;
+  border-color: #b3d8ff;
+  color: #409eff;
+}
+
+.app-search button:active {
+  background: #d9ecff;
+  border-color: #409eff;
 }
 
 .app-content{
   flex: 1;
-
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%
+  height: 100%;
+  overflow: hidden;
 }
 
 </style>

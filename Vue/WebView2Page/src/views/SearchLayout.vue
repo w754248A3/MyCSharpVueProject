@@ -51,15 +51,32 @@ const onAddRoot=()=>{
   height: 100%;
   width: 100%;
   box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
 }
 
 .search-input {
   flex: 0 0 auto;
-  padding: 8px 12px;
-  font-size: 16px;
-  border: 1px solid #ccc;
+  padding: 10px 16px;
+  font-size: 14px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
   outline: none;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  color: #606266;
+  width: 100%;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+}
+
+.search-input::placeholder {
+  color: #c0c4cc;
 }
 
 </style>

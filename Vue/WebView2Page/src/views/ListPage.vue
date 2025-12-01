@@ -48,14 +48,17 @@ function handleClick(item: ListItem, index: number) {
 <style scoped>
 .list-container {
   flex: 1;
- 
   display: flex;
   flex-direction: column;
-
   min-height: 0;
   overflow: auto;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   margin-bottom: 80px;
+  background: #ffffff;
+  padding: 8px;
+  border-radius: 8px;
+  margin: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .list {
@@ -65,22 +68,43 @@ function handleClick(item: ListItem, index: number) {
 }
 
 .list-item {
-  padding: 8px 12px;
+  padding: 12px 16px;
   cursor: pointer;
-  white-space: nowrap;          /* 不换行 */
-  overflow: hidden;             /* 隐藏超出 */
-  text-overflow: ellipsis;      /* 显示省略号 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
+  color: #606266;
+  border-bottom: 1px solid #f0f2f5;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  position: relative;
 }
 
 .list-item:hover {
-  background: #f5f5f5;
+  background: #f5f7fa;
+  color: #409eff;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
 }
 
-.selected {
-  background: #e6f7ff;
-  font-weight: bold;
+.list-item.selected {
+  background: linear-gradient(90deg, #ecf5ff 0%, #ffffff 100%);
+  color: #409eff;
+  font-weight: 600;
+  border-left: 3px solid #409eff;
+  padding-left: 13px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.list-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #409eff;
 }
 </style>
