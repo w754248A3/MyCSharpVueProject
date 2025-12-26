@@ -23,7 +23,7 @@ using LinqToDB.SqlQuery;
 using Microsoft.Data.Sqlite;
 using Microsoft.Web.WebView2.Core;
 
-namespace CSharp;
+namespace MyNodeView;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
@@ -384,7 +384,7 @@ public partial class MainWindow : Window
             var s = AppDomain.CurrentDomain.BaseDirectory;
 
 
-            return System.IO.Path.Combine(s, "CSharp.exe.WebView2");
+            return System.IO.Path.Combine(s, "MyNodeView.exe.WebView2");
         }
 
         var info = new CoreWebView2EnvironmentOptions();

@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace CSharp;
+namespace MyNodeView;
 
 /// <summary>
 /// Interaction logic for App.xaml
