@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.Metrics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
@@ -316,6 +318,13 @@ public partial class MainWindow : Window
 
             webView2.CoreWebView2.PostWebMessageAsString(s);
         }
+        else if(type == MessageType.CLIPBOARDHISTORY){
+            
+            var vs = _记录粘贴板.ToList().Reverse<string>().ToList();
+            var s = JsonSerializer.Serialize(new MessageData<List<string>>{Type= MessageType.CLIPBOARDHISTORY, Index= index, Value=vs});
+
+            webView2.CoreWebView2.PostWebMessageAsString(s);
+        }
         else{
             throw new IndexOutOfRangeException("没有这个消息类型");
         }
@@ -361,6 +370,8 @@ public partial class MainWindow : Window
 
 
         public const string UPDATA = "UPDATA";
+
+        public const string CLIPBOARDHISTORY ="CLIPBOARDHISTORY";
     }
 
     public class MessageData<T>{
@@ -406,4 +417,111 @@ public partial class MainWindow : Window
 
        
     }
+
+
+
+
+
+
+
+
+
+
+     [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AddClipboardFormatListener(IntPtr hwnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+
+    const int WM_CLIPBOARDUPDATE = 0x031D;
+    HwndSource _hwndSource;
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        //IntPtr windowHandle = new WindowInteropHelper(this).Handle;
+
+        _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+        AddClipboardFormatListener(_hwndSource.Handle);
+        _hwndSource.AddHook(WndProc);
+    }
+
+    
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        
+
+
+        if (msg == WM_CLIPBOARDUPDATE)
+        {
+            string data = F尝试获取粘贴板的值();
+            if (data is not null)
+            {
+                F添加已记录的粘贴板值(data);
+            }
+
+        }
+
+        return IntPtr.Zero;
+    }
+
+    static string F尝试获取粘贴板的值()
+    {
+
+
+        const uint ERRORCODE = 0x800401D0;
+
+
+        try
+        {
+            IDataObject iData = Clipboard.GetDataObject();
+            if (iData is not null && iData.GetDataPresent(DataFormats.UnicodeText))
+            {
+                string data = (string)iData.GetData(DataFormats.UnicodeText);
+                // 使用data进行后续操作
+
+                return data;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        catch (COMException ex)
+        {
+            
+            return null;
+        }
+        
+
+    }
+
+
+    Queue<string> _记录粘贴板 = new Queue<string>();
+    string _上一个粘贴板记录的值 = string.Empty;
+    string _应用本身主动写入的粘贴板值 = string.Empty;
+    void F添加已记录的粘贴板值(string text)
+    {
+        if (text.Equals(_上一个粘贴板记录的值, StringComparison.Ordinal)||
+            text.Equals(_应用本身主动写入的粘贴板值, StringComparison.Ordinal))
+        {
+            return;
+        }
+        else
+        {
+            _上一个粘贴板记录的值 = text;
+        }
+
+
+        _记录粘贴板.Enqueue(text);
+        if (_记录粘贴板.Count > 20)
+        {
+
+
+            _记录粘贴板.Dequeue();
+        }
+    }
+
 }

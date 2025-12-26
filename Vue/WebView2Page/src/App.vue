@@ -34,6 +34,12 @@ type FunctionMap = {
     return: Promise<NodeData>;
   };
 
+
+  CLIPBOARDHISTORY:{
+    args:number;
+    return:Promise<string[]>;
+  }
+
 };
 
 
@@ -43,7 +49,7 @@ const messageFunc = (() => {
   ((<any>window).chrome).webview.addEventListener('message', (event: any) => {
 
     const obj = <MessageData>JSON.parse(event.data);
-
+    
     const func = map.get(obj.index);
 
 
@@ -118,13 +124,20 @@ const handleSearch2 = async (value: string) => {
  
   const vs = await messageFunc("SEARCH", value);
   const fvs = vs.map(v => { return { text: v.title, id: v.id } });
-
   listPageData.value = fvs;
+  if(fvs.length === 0){
+    listIsView.value =false;
+  }
+  else{
+    listIsView.value = true;
+  }
+
+  
 
 
   //data.value.push({text:value,id:id++});
 
-  listIsView.value = true;
+  
 };
 
 
@@ -245,6 +258,27 @@ const initRootNodeListPageData= async ()=>{
 };
 
 
+const isClipboardHistoryPopView= ref<boolean>(false);
+
+const isClipboardHistoryPopText = ref<string>("");
+
+const onViewClipboardHistory = async ()=>{
+
+  
+  const vs = await messageFunc("CLIPBOARDHISTORY", 0);
+ 
+  isClipboardHistoryPopText.value = vs.join("\r\n\r\n");
+
+  isClipboardHistoryPopView.value=true;
+
+};
+
+const onViewClipboardHistoryPopClose =()=>{
+
+  isClipboardHistoryPopView.value=false;
+};
+
+
 setTimeout(initRootNodeListPageData, 1000);
 
 provide(onAddNodeKey, addNode2);
@@ -272,6 +306,7 @@ provide(onUPNodeKey, upNode);
         <SearchLayout @search-change="handleSearch2"></SearchLayout> 
         <button @click="onAddRoot">添加根</button>
         <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
+        <button @click="onViewClipboardHistory">粘贴板</button>
         <button @click="onText">测试</button>
       </div>
       <div class="app-content">
@@ -281,6 +316,7 @@ provide(onUPNodeKey, upNode);
     </div>
     
     <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
+    <PopPage :in-text="isClipboardHistoryPopText" @on-confirm-text="onViewClipboardHistoryPopClose" v-if="isClipboardHistoryPopView"></PopPage>
   </div>
 </template>
 

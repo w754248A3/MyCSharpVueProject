@@ -7,6 +7,7 @@
       v-model="searchText"
       @input="onSearchInput"
       @focus="onSearchInput"
+      @blur="onBlur"
       placeholder="请输入搜索内容..."
     />
   </div>
@@ -18,7 +19,8 @@ import PopPage from "./PopPage.vue";
 
 const emit = defineEmits<{
     "search-change":[value:string],
-    "add-root":[value:string]
+    "add-root":[value:string],
+    "on-blur":[]
 }>();
 
 
@@ -37,6 +39,11 @@ const onSearchInput = () => {
     }, 300);
 };
 
+
+const onBlur =()=>{
+  emit("on-blur");
+
+};
 
 const onAddRoot=()=>{
 
