@@ -2,14 +2,18 @@
   <div class="survey-tree">
     <div v-for="(node, index) in displayedNodes" :key="node.id" class="node-section">
       <!-- 标题 -->
-      <div class="node-title" @click="handleTitleClick(node.id)">
+      <div v-if="node.options.length !== 0" class="node-title" @click="toggleNode(node.id)">
         <span class="title-text">{{ node.title }}</span>
         
         <span class="toggle-icon">{{ collapsed[node.id] ? "▼" : "▲" }}</span>
       </div>
 
+      <div v-if="node.options.length === 0" class="node-title">
+        <span class="title-text" contenteditable="true">{{ node.title }}</span>
+      </div>
+
       <!-- 选项 -->
-      <div v-show="node.options.length ===0 || !collapsed[node.id]" class="options">
+      <div v-show="node.options.length !==0 && !collapsed[node.id]" class="options">
         <label v-for="opt in node.options" :key="opt.id" class="option-item">
           <input
             type="radio"
@@ -21,12 +25,13 @@
           <span class="option-text">{{ opt.label }}</span>
         </label>
 
-        <!--button-->
+        
+      </div>  
+      <!--button-->
         <div v-show="isViewAddAndUpDataButton" class="node-button">
           <button @click="onAddNode(node.id)">Add Node</button>
           <button @click="onUpNode(node.id, node.title)">UP Node</button>
-        </div>
-      </div>   
+        </div> 
     </div>
     <div v-if="isOpenPop">
     <PopPage :in-text="text" @on-confirm-text="outText"></PopPage>
@@ -178,17 +183,6 @@ const outText = ref<(s:string)=> void>((s)=> {});
     collapsed[nodeId] = !collapsed[nodeId];
   };
 
-  const handleTitleClick = (nodeId: number) => {
-    // 检查是否有文本被选中
-    const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
-      // 如果有文本被选中，不触发折叠
-      return;
-    }
-    // 如果没有文本被选中，触发折叠
-    toggleNode(nodeId);
-  };
-
   initRootNode();
 
 </script>
@@ -317,7 +311,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   color: #606266;
   font-size: 14px;
   flex: 1;
-  user-select: none;
+  user-select: text;
 }
 
 .option-item:hover .option-text {
