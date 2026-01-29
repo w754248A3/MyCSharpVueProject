@@ -9,7 +9,7 @@
       </div>
 
       <div v-if="node.options.length === 0" class="node-title">
-        <span class="title-text" contenteditable="true">{{ node.title }}</span>
+        <span class="title-text">{{ node.title }}</span>
       </div>
 
       <!-- 选项 -->
@@ -36,12 +36,29 @@
     <div v-if="isOpenPop">
     <PopPage :in-text="text" @on-confirm-text="outText"></PopPage>
   </div>
+
+  <!-- 最终内容编辑/预览区 -->
+  <div v-if="terminalNode" ref="resultAreaRef" class="result-area">
+    <div class="result-header">
+      <span class="result-label">内容预览与临时编辑</span>
+      <button class="copy-btn" @click="copyToClipboard">
+        <span class="copy-icon">📋</span> 复制
+      </button>
+    </div>
+    <textarea
+      ref="textareaRef"
+      v-model="editableResult"
+      class="result-textarea"
+      placeholder="此处显示末尾节点内容，您可以在此进行临时编辑或复制..."
+      spellcheck="false"
+    ></textarea>
+  </div>
   </div>
   
 </template>
 
 <script setup lang="ts">
-import { defineComponent, inject, reactive, ref } from "vue";
+import { defineComponent, inject, reactive, ref, computed, watch, nextTick } from "vue";
 import PopPage from "./PopPage.vue";
 import {type NodeData, type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey} from "../mytype"
 
@@ -94,6 +111,45 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const displayedNodes = ref<ViewTreeData[]>([]);
   const collapsed = reactive<Record<number, boolean>>({});
   const selected = reactive<Record<number, number | null>>({});
+  const editableResult = ref("");
+  const resultAreaRef = ref<HTMLElement | null>(null);
+  const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
+  const terminalNode = computed(() => {
+    const lastNode = displayedNodes.value[displayedNodes.value.length - 1];
+    return (lastNode && lastNode.options.length === 0) ? lastNode : null;
+  });
+
+  const adjustTextareaHeight = () => {
+    nextTick(() => {
+      if (textareaRef.value) {
+        textareaRef.value.style.height = "auto";
+        textareaRef.value.style.height = textareaRef.value.scrollHeight + "px";
+      }
+    });
+  };
+
+  watch(() => terminalNode.value, (newNode) => {
+    editableResult.value = newNode ? newNode.title : "";
+    if (newNode) {
+      nextTick(() => {
+        resultAreaRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        adjustTextareaHeight();
+      });
+    }
+  }, { immediate: true });
+
+  watch(editableResult, () => {
+    adjustTextareaHeight();
+  });
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(editableResult.value);
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+    }
+  };
 
   const initRootNode = async () => {
     const root = await findChildNode(props.id);
@@ -229,6 +285,9 @@ const outText = ref<(s:string)=> void>((s)=> {});
 .title-text {
   flex: 1;
   user-select: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .node-title:hover {
@@ -323,4 +382,104 @@ const outText = ref<(s:string)=> void>((s)=> {});
   font-weight: 500;
 }
 
+.result-area {
+  margin-top: 32px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.result-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  display: flex;
+  align-items: center;
+}
+
+.result-label::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background: #409eff;
+  margin-right: 8px;
+  border-radius: 2px;
+}
+
+.copy-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  background: #ecf5ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 6px;
+  color: #409eff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.copy-btn:hover {
+  background: #409eff;
+  color: #ffffff;
+  border-color: #409eff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.copy-btn:active {
+  transform: translateY(0);
+}
+
+.result-textarea {
+  width: 100%;
+  min-height: 50px;
+  padding: 16px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #606266;
+  resize: none;
+  background: #fafafa;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+  overflow-y: hidden;
+}
+
+.result-textarea:focus {
+  outline: none;
+  border-color: #409eff;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+}
+
+.result-textarea::placeholder {
+  color: #c0c4cc;
+}
 </style>

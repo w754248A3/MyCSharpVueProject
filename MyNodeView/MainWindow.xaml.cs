@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -567,6 +568,25 @@ public partial class MainWindow : Window
 
     const int WM_CLIPBOARDUPDATE = 0x031D;
     HwndSource _hwndSource;
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        var result = MessageBox.Show("确定要退出吗？", "确认退出", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result == MessageBoxResult.No)
+        {
+            e.Cancel = true;
+        }
+        else
+        {
+            // 确认关闭时移除剪贴板监听器
+            if (_hwndSource != null)
+            {
+                RemoveClipboardFormatListener(_hwndSource.Handle);
+            }
+        }
+        base.OnClosing(e);
+    }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
