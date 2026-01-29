@@ -3,6 +3,12 @@ import type { InjectionKey, Ref } from "vue"
 export interface ListItem {
   text: string
   id: number
+  path?: string
+}
+
+export interface NodeSearchResult {
+  item: NodeData;
+  parents: NodeData[];
 }
 
 export interface Tabs {

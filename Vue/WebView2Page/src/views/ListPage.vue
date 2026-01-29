@@ -7,9 +7,10 @@
         :class="{ selected: selectedIndex === index }"
         @click="handleClick(item, index)"
         class="list-item"
-        :title="item.text"
+        :title="item.path ? `${item.path} -> ${item.text}` : item.text"
       >
-        {{ item.text }}
+        <div v-if="item.path" class="item-path">{{ item.path }}</div>
+        <div class="item-text">{{ item.text }}</div>
       </li>
     </ul>
   </div>
@@ -68,34 +69,58 @@ function handleClick(item: ListItem, index: number) {
 }
 
 .list-item {
-  padding: 12px 16px;
+  padding: 10px 16px;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
-  color: #606266;
   border-bottom: 1px solid #f0f2f5;
   transition: all 0.2s ease;
   border-radius: 4px;
   margin-bottom: 4px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.item-path {
+  font-size: 11px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+
+.item-text {
+  font-size: 14px;
+  color: #303133;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .list-item:hover {
   background: #f5f7fa;
-  color: #409eff;
   transform: translateX(4px);
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
 }
 
+.list-item:hover .item-text {
+  color: #409eff;
+}
+
 .list-item.selected {
   background: linear-gradient(90deg, #ecf5ff 0%, #ffffff 100%);
-  color: #409eff;
-  font-weight: 600;
   border-left: 3px solid #409eff;
   padding-left: 13px;
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.list-item.selected .item-text {
+  color: #409eff;
+  font-weight: 600;
 }
 
 .list-item.selected::before {

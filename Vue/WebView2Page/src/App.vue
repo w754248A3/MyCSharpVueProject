@@ -10,7 +10,7 @@ import TabPage from './views/TabPage.vue';
 import SearchLayout from './views/SearchLayout.vue';
 import ListPage from './views/ListPage.vue';
 import RootNodeListPage from "./views/RootNodeListPage.vue";
-import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, onAddNodeKey, onFindChildNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey } from './mytype';
+import { type ListItem, type NodeData, type ViewTreeData, type Tabs, type MessageData, type NodeSearchResult, onAddNodeKey, onFindChildNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey } from './mytype';
 
 
 type FunctionMap = {
@@ -26,7 +26,7 @@ type FunctionMap = {
 
   SEARCH: {
     args: string;
-    return: Promise<NodeData[]>;
+    return: Promise<NodeSearchResult[]>;
   };
 
   UPDATA: {
@@ -123,7 +123,13 @@ const messageFunc = (() => {
 const handleSearch2 = async (value: string) => {
  
   const vs = await messageFunc("SEARCH", value);
-  const fvs = vs.map(v => { return { text: v.title, id: v.id } });
+  const fvs: ListItem[] = vs.map(v => { 
+    return { 
+      text: v.item.title, 
+      id: v.item.id,
+      path: v.parents.length > 0 ? v.parents.map(p => p.title).join(" -> ") : undefined
+    } 
+  });
   listPageData.value = fvs;
   if(fvs.length === 0){
     listIsView.value =false;
@@ -248,12 +254,14 @@ const onViewAddAndUpDataButton= ()=>{
 const initRootNodeListPageData= async ()=>{
 
   const vs = await messageFunc("SEARCH", "");
-  const fvs = vs.map(v => { return { text: v.title, id: v.id } });
-
-  rootNodeListPageData.value=fvs;
-
-
-
+  const fvs: ListItem[] = vs.map(v => { 
+    return { 
+      text: v.item.title, 
+      id: v.item.id,
+      path: v.parents.length > 0 ? v.parents.map(p => p.title).join(" -> ") : undefined
+    } 
+  });
+  rootNodeListPageData.value = fvs;
 
 };
 

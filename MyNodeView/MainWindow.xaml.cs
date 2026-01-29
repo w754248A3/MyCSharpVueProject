@@ -370,38 +370,27 @@ public partial class MainWindow : Window
 
             var searchText = jsondoc.RootElement.GetProperty("value").GetString();
 
-            List<NodeData> vs;
+            List<NodeSearchResult> vs = new List<NodeSearchResult>();
 
             try{
 
                 if(string.IsNullOrWhiteSpace(searchText)){
-                    vs = SearchFunc();
+                    var roots = SearchFunc();
+                    vs = roots.Select(r => new NodeSearchResult { Item = r, Parents = new List<NodeData>() }).ToList();
                 }
                 else{
-
-                    var vvs = SearchNodesWithFullPath(searchText);
-                    var options = new JsonSerializerOptions
-                    {Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                        WriteIndented = true // 关键点：开启美化打印
-                    };
-                    var ss = JsonSerializer.Serialize(vvs, options);
-
-                    System.Diagnostics.Trace.WriteLine(ss);
-                    
-
-
-                    vs = SearchFunc(searchText);
+                    vs = SearchNodesWithFullPath(searchText);
                 }
             }
             catch(SqliteException ex){
-                vs = new List<NodeData>();
+                vs = new List<NodeSearchResult>();
             }
             catch(SqlException ex){
-                vs = new List<NodeData>();
+                vs = new List<NodeSearchResult>();
             }
 
                
-            var s = JsonSerializer.Serialize(new MessageData<List<NodeData>>{Type= MessageType.SEARCH, Index= index, Value=vs});
+            var s = JsonSerializer.Serialize(new MessageData<List<NodeSearchResult>>{Type= MessageType.SEARCH, Index= index, Value=vs});
 
 
             webView2.CoreWebView2.PostWebMessageAsString(s);
