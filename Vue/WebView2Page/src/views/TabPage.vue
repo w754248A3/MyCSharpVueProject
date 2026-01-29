@@ -22,7 +22,8 @@
         class="tab-content"
         :class="{ active: activeTab === tab.index }"
       >
-        <SurveyTree :id="tab.id" />
+        <SurveyTree v-if="tab.type === 'survey'" :id="tab.id" />
+        <ClipboardHistory v-else-if="tab.type === 'clipboard'" :content="tab.content" />
       </div>
     </div>
   </div>
@@ -31,6 +32,7 @@
 <script setup lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import SurveyTree from './SurveyTree.vue';
+import ClipboardHistory from './ClipboardHistory.vue';
 import type {NodeData, ViewTreeData, Option, ListItem, Tabs} from "../mytype"
 
 
@@ -80,7 +82,13 @@ const props = defineProps<{
     if(newValue){
 
       tabIndex++;
-      tabs.value.push({text:newValue.text, id:newValue.id, index:tabIndex});
+      tabs.value.push({
+        text: newValue.text, 
+        id: newValue.id, 
+        index: tabIndex, 
+        type: newValue.type || 'survey',
+        content: newValue.content
+      });
 
       activeTab.value= tabIndex;
     }

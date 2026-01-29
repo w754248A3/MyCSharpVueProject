@@ -4,6 +4,8 @@ export interface ListItem {
   text: string
   id: number
   path?: string
+  type?: 'survey' | 'clipboard'
+  content?: string
 }
 
 export interface NodeSearchResult {
@@ -14,7 +16,9 @@ export interface NodeSearchResult {
 export interface Tabs {
   text: string
   id: number
-  index:number
+  index: number
+  type: 'survey' | 'clipboard'
+  content?: string
 }
 
 export interface NodeData{

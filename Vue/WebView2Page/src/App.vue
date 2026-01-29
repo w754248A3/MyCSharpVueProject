@@ -154,7 +154,7 @@ const onSelect = (v: ListItem) => {
 
   listIsView.value = false;
 
-  addTabValue.value = v;
+  addTabValue.value = { ...v, type: 'survey' };
 
 
 };
@@ -266,24 +266,18 @@ const initRootNodeListPageData= async ()=>{
 };
 
 
-const isClipboardHistoryPopView= ref<boolean>(false);
-
-const isClipboardHistoryPopText = ref<string>("");
-
 const onViewClipboardHistory = async ()=>{
 
   
   const vs = await messageFunc("CLIPBOARDHISTORY", 0);
  
-  isClipboardHistoryPopText.value = vs.join("\r\n\r\n");
+  addTabValue.value = {
+    text: `粘贴板 ${new Date().toLocaleTimeString()}`,
+    id: Date.now(),
+    type: 'clipboard',
+    content: vs.join("\r\n\r\n")
+  };
 
-  isClipboardHistoryPopView.value=true;
-
-};
-
-const onViewClipboardHistoryPopClose =()=>{
-
-  isClipboardHistoryPopView.value=false;
 };
 
 
@@ -324,7 +318,6 @@ provide(onUPNodeKey, upNode);
     </div>
     
     <PopPage in-text="" @on-confirm-text="onInputOverText2" v-if="isViewPop"></PopPage>
-    <PopPage :in-text="isClipboardHistoryPopText" @on-confirm-text="onViewClipboardHistoryPopClose" v-if="isClipboardHistoryPopView"></PopPage>
   </div>
 </template>
 
