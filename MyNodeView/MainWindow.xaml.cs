@@ -41,6 +41,7 @@ public partial class MainWindow : Window
 
 
         InitData();
+        InitImageStore();
         InitWebView2();
 
         
@@ -538,10 +539,8 @@ public partial class MainWindow : Window
 
 
         await webView2.EnsureCoreWebView2Async(environment);
-        webView2.CoreWebView2.SetVirtualHostNameToFolderMapping("mypage.test", 
-         @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist", CoreWebView2HostResourceAccessKind.DenyCors);
+        RegisterWebResourceRoutes();
         webView2.CoreWebView2.Navigate("https://mypage.test/index.html");
-
         webView2.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
 
