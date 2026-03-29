@@ -9,6 +9,10 @@ public partial class MainWindow
 {
     private NodeImageStore? _imageStore;
     private string? _webRootPath;
+    private static readonly JsonSerializerOptions ApiJsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     private void InitImageStore()
     {
@@ -148,7 +152,7 @@ public partial class MainWindow
             }
 
             var summary = await _imageStore.GetSummaryAsync(nodeId.Value);
-            var payload = JsonSerializer.Serialize(summary);
+            var payload = JsonSerializer.Serialize(summary, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload);
         }
 
@@ -161,7 +165,7 @@ public partial class MainWindow
             }
 
             var list = await _imageStore.ListAsync(nodeId.Value);
-            var payload = JsonSerializer.Serialize(list);
+            var payload = JsonSerializer.Serialize(list, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload);
         }
 
@@ -223,7 +227,7 @@ public partial class MainWindow
             var fileName = string.IsNullOrWhiteSpace(fileNameRaw) ? string.Empty : Uri.UnescapeDataString(fileNameRaw);
 
             var imageId = await _imageStore.InsertAsync(nodeId.Value, fileName, mimeType, imageBytes);
-            var payload = JsonSerializer.Serialize(new { id = imageId });
+            var payload = JsonSerializer.Serialize(new { id = imageId }, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload, 201, "Created");
         }
 
