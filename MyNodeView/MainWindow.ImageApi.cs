@@ -95,29 +95,13 @@ public partial class MainWindow
         }
 
         var mimeType = GuessMimeType(candidatePath);
-        var stream = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 200, "OK", BuildStaticHeaders(mimeType));
+        var stream2 = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream2, 200, "OK", BuildStaticHeaders(mimeType));
     }
 
     private static string ResolveWebRootPath()
     {
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        var candidates = new[]
-        {
-            Path.Combine(baseDir, "WebView2Page", "dist"),
-            Path.Combine(baseDir, "..", "..", "..", "..", "Vue", "WebView2Page", "dist")
-        };
-
-        foreach (var candidate in candidates)
-        {
-            var fullPath = Path.GetFullPath(candidate);
-            if (Directory.Exists(fullPath))
-            {
-                return fullPath;
-            }
-        }
-
-        return Path.GetFullPath(candidates[0]);
+        return @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist";
     }
 
     private static string GuessMimeType(string filePath)
