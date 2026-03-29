@@ -8,6 +8,11 @@ namespace MyNodeView;
 public partial class MainWindow
 {
     private NodeImageStore? _imageStore;
+    private string? _webRootPath;
+    private static readonly JsonSerializerOptions ApiJsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     private void InitImageStore()
     {
@@ -15,15 +20,16 @@ public partial class MainWindow
         _imageStore = new NodeImageStore(dbPath);
     }
 
-    private void RegisterImageApiRoutes()
+    private void RegisterWebResourceRoutes()
     {
-        webView2.CoreWebView2.AddWebResourceRequestedFilter("https://mypage.test/api/images*", CoreWebView2WebResourceContext.All);
+        _webRootPath = ResolveWebRootPath();
+        webView2.CoreWebView2.AddWebResourceRequestedFilter("https://mypage.test/*", CoreWebView2WebResourceContext.All);
         webView2.CoreWebView2.WebResourceRequested += OnWebResourceRequested;
     }
 
     private async void OnWebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {
-        if (!e.Request.Uri.StartsWith("https://mypage.test/api/images", StringComparison.OrdinalIgnoreCase))
+        if (!e.Request.Uri.StartsWith("https://mypage.test/", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -31,7 +37,9 @@ public partial class MainWindow
         var deferral = e.GetDeferral();
         try
         {
-            e.Response = await HandleImageApiRequestAsync(e.Request);
+            e.Response = IsImageApiRequest(e.Request.Uri)
+                ? await HandleImageApiRequestAsync(e.Request)
+                : HandleStaticFileRequest(e.Request);
         }
         catch (Exception ex)
         {
@@ -42,6 +50,96 @@ public partial class MainWindow
         {
             deferral.Complete();
         }
+    }
+
+    private bool IsImageApiRequest(string requestUri)
+    {
+        return requestUri.StartsWith("https://mypage.test/api/images", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private CoreWebView2WebResourceResponse HandleStaticFileRequest(CoreWebView2WebResourceRequest request)
+    {
+        if (!string.Equals(request.Method, "GET", StringComparison.OrdinalIgnoreCase))
+        {
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 405, "Method Not Allowed", BuildStaticHeaders("text/plain; charset=utf-8"));
+        }
+
+        if (string.IsNullOrWhiteSpace(_webRootPath) || !Directory.Exists(_webRootPath))
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("Static resource root not found."));
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("text/plain; charset=utf-8"));
+        }
+
+        var requestUri = new Uri(request.Uri);
+        var relativePath = requestUri.AbsolutePath.TrimStart('/');
+        if (string.IsNullOrEmpty(relativePath))
+        {
+            relativePath = "index.html";
+        }
+
+        var safePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+        var candidatePath = Path.GetFullPath(Path.Combine(_webRootPath, safePath));
+        var rootFullPath = Path.GetFullPath(_webRootPath);
+        if (!candidatePath.StartsWith(rootFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 403, "Forbidden", BuildStaticHeaders("text/plain; charset=utf-8"));
+        }
+
+        if (!File.Exists(candidatePath))
+        {
+            candidatePath = Path.Combine(_webRootPath, "index.html");
+            if (!File.Exists(candidatePath))
+            {
+                return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 404, "Not Found", BuildStaticHeaders("text/plain; charset=utf-8"));
+            }
+        }
+
+        var mimeType = GuessMimeType(candidatePath);
+        var stream = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 200, "OK", BuildStaticHeaders(mimeType));
+    }
+
+    private static string ResolveWebRootPath()
+    {
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(baseDir, "WebView2Page", "dist"),
+            Path.Combine(baseDir, "..", "..", "..", "..", "Vue", "WebView2Page", "dist")
+        };
+
+        foreach (var candidate in candidates)
+        {
+            var fullPath = Path.GetFullPath(candidate);
+            if (Directory.Exists(fullPath))
+            {
+                return fullPath;
+            }
+        }
+
+        return Path.GetFullPath(candidates[0]);
+    }
+
+    private static string GuessMimeType(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".html" => "text/html; charset=utf-8",
+            ".js" => "text/javascript; charset=utf-8",
+            ".mjs" => "text/javascript; charset=utf-8",
+            ".css" => "text/css; charset=utf-8",
+            ".json" => "application/json; charset=utf-8",
+            ".svg" => "image/svg+xml",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".ico" => "image/x-icon",
+            ".woff" => "font/woff",
+            ".woff2" => "font/woff2",
+            _ => "application/octet-stream"
+        };
     }
 
     private async Task<CoreWebView2WebResourceResponse> HandleImageApiRequestAsync(CoreWebView2WebResourceRequest request)
@@ -70,7 +168,7 @@ public partial class MainWindow
             }
 
             var summary = await _imageStore.GetSummaryAsync(nodeId.Value);
-            var payload = JsonSerializer.Serialize(summary);
+            var payload = JsonSerializer.Serialize(summary, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload);
         }
 
@@ -83,7 +181,7 @@ public partial class MainWindow
             }
 
             var list = await _imageStore.ListAsync(nodeId.Value);
-            var payload = JsonSerializer.Serialize(list);
+            var payload = JsonSerializer.Serialize(list, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload);
         }
 
@@ -145,7 +243,7 @@ public partial class MainWindow
             var fileName = string.IsNullOrWhiteSpace(fileNameRaw) ? string.Empty : Uri.UnescapeDataString(fileNameRaw);
 
             var imageId = await _imageStore.InsertAsync(nodeId.Value, fileName, mimeType, imageBytes);
-            var payload = JsonSerializer.Serialize(new { id = imageId });
+            var payload = JsonSerializer.Serialize(new { id = imageId }, ApiJsonSerializerOptions);
             return CreateJsonResponse(payload, 201, "Created");
         }
 
@@ -233,6 +331,11 @@ public partial class MainWindow
         sb.Append("Access-Control-Allow-Headers: Content-Type,X-File-Name\r\n");
         sb.Append("Cache-Control: no-store\r\n");
         return sb.ToString();
+    }
+
+    private static string BuildStaticHeaders(string contentType)
+    {
+        return $"Content-Type: {contentType}\r\nCache-Control: no-store\r\n";
     }
 
     private static string EscapeJson(string s)

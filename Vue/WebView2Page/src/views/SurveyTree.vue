@@ -189,6 +189,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const isImageModalOpen = ref(false);
   const imageList = ref<NodeImageInfo[]>([]);
   const isImageLoading = ref(false);
+  const imageListRequestSeq = ref(0);
   const fileInputRef = ref<HTMLInputElement | null>(null);
   const largePreviewUrl = ref("");
 
@@ -259,18 +260,27 @@ const outText = ref<(s:string)=> void>((s)=> {});
 
   const loadImageList = async () => {
     if (!terminalNode.value) return;
+    const requestNodeId = terminalNode.value.id;
+    const requestSeq = ++imageListRequestSeq.value;
     isImageLoading.value = true;
     try {
-      const rsp = await fetch(`https://mypage.test/api/images/list?nodeId=${terminalNode.value.id}`);
+      const rsp = await fetch(`https://mypage.test/api/images/list?nodeId=${requestNodeId}`);
       if (!rsp.ok) {
         throw new Error("加载图片列表失败");
       }
-      imageList.value = await rsp.json() as NodeImageInfo[];
+      const list = await rsp.json() as NodeImageInfo[];
+      if (requestSeq !== imageListRequestSeq.value) return;
+      if (!terminalNode.value || terminalNode.value.id !== requestNodeId) return;
+      imageList.value = list;
     } catch (error) {
       console.error(error);
-      imageList.value = [];
+      if (requestSeq === imageListRequestSeq.value) {
+        imageList.value = [];
+      }
     } finally {
-      isImageLoading.value = false;
+      if (requestSeq === imageListRequestSeq.value) {
+        isImageLoading.value = false;
+      }
     }
   };
 
