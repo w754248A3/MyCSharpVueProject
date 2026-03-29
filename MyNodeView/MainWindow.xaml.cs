@@ -41,6 +41,7 @@ public partial class MainWindow : Window
 
 
         InitData();
+        InitImageStore();
         InitWebView2();
 
         
@@ -542,6 +543,7 @@ public partial class MainWindow : Window
          @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist", CoreWebView2HostResourceAccessKind.DenyCors);
         webView2.CoreWebView2.Navigate("https://mypage.test/index.html");
 
+        RegisterImageApiRoutes();
         webView2.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
 
