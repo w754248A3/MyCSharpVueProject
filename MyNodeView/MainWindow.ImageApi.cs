@@ -44,7 +44,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes($"{{\"error\":\"{EscapeJson(ex.Message)}\"}}"));
-            e.Response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildCorsHeaders("application/json"));
+            e.Response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("application/json"));
         }
         finally
         {
@@ -95,7 +95,7 @@ public partial class MainWindow
         }
 
         var mimeType = GuessMimeType(candidatePath);
-        var stream2 = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var stream2 = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
         return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream2, 200, "OK", BuildStaticHeaders(mimeType));
     }
 
@@ -131,7 +131,7 @@ public partial class MainWindow
         if (_imageStore is null)
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes("{\"error\":\"Image store not initialized\"}"));
-            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildCorsHeaders("application/json"));
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("application/json"));
         }
 
         var uri = new Uri(request.Uri);
@@ -140,7 +140,7 @@ public partial class MainWindow
 
         if (method == "OPTIONS")
         {
-            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 204, "No Content", BuildCorsHeaders("text/plain"));
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 204, "No Content", BuildStaticHeaders("text/plain"));
         }
 
         if (method == "GET" && path.EndsWith("/meta", StringComparison.OrdinalIgnoreCase))
@@ -184,7 +184,7 @@ public partial class MainWindow
             }
 
             var stream = new MemoryStream(image.Data, writable: false);
-            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 200, "OK", BuildCorsHeaders(image.MimeType, image.Data.LongLength));
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 200, "OK", BuildStaticHeaders(image.MimeType, image.Data.LongLength));
         }
 
         if (method == "POST" && path.EndsWith("/upload", StringComparison.OrdinalIgnoreCase))
@@ -248,25 +248,25 @@ public partial class MainWindow
             return CreateJsonResponse("{\"ok\":true}");
         }
 
-        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 404, "Not Found", BuildCorsHeaders("text/plain"));
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 404, "Not Found", BuildStaticHeaders("text/plain"));
     }
 
     private CoreWebView2WebResourceResponse CreateJsonResponse(string json, int statusCode = 200, string statusText = "OK")
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, statusCode, statusText, BuildCorsHeaders("application/json; charset=utf-8"));
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, statusCode, statusText, BuildStaticHeaders("application/json; charset=utf-8"));
     }
 
     private CoreWebView2WebResourceResponse CreateBadRequest(string message)
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes($"{{\"error\":\"{EscapeJson(message)}\"}}"));
-        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 400, "Bad Request", BuildCorsHeaders("application/json; charset=utf-8"));
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 400, "Bad Request", BuildStaticHeaders("application/json; charset=utf-8"));
     }
 
     private CoreWebView2WebResourceResponse CreateNotFound()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes("{\"error\":\"Not found\"}"));
-        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 404, "Not Found", BuildCorsHeaders("application/json; charset=utf-8"));
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 404, "Not Found", BuildStaticHeaders("application/json; charset=utf-8"));
     }
 
     private static int? ParseIntQuery(Uri uri, string key)
@@ -302,7 +302,7 @@ public partial class MainWindow
         return null;
     }
 
-    private static string BuildCorsHeaders(string contentType, long? contentLength = null)
+    private static string BuildStaticHeaders(string contentType, long? contentLength = null)
     {
         var sb = new StringBuilder();
         sb.Append("Content-Type: ").Append(contentType).Append("\r\n");
@@ -310,17 +310,10 @@ public partial class MainWindow
         {
             sb.Append("Content-Length: ").Append(contentLength.Value).Append("\r\n");
         }
-        sb.Append("Access-Control-Allow-Origin: https://mypage.test\r\n");
-        sb.Append("Access-Control-Allow-Methods: GET,POST,DELETE,OPTIONS\r\n");
-        sb.Append("Access-Control-Allow-Headers: Content-Type,X-File-Name\r\n");
         sb.Append("Cache-Control: no-store\r\n");
         return sb.ToString();
     }
 
-    private static string BuildStaticHeaders(string contentType)
-    {
-        return $"Content-Type: {contentType}\r\nCache-Control: no-store\r\n";
-    }
 
     private static string EscapeJson(string s)
     {
