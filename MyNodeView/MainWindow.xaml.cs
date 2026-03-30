@@ -539,7 +539,7 @@ public partial class MainWindow : Window
 
 
         await webView2.EnsureCoreWebView2Async(environment);
-        RegisterWebResourceRoutes();
+        RegisterWebResourceRoutes(@"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist");
         webView2.CoreWebView2.Navigate("https://mypage.test/index.html");
         webView2.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 

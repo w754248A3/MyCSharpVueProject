@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 
 namespace MyNodeView;
@@ -18,14 +19,38 @@ public sealed class NodeImageStore
         InitializeAsync().GetAwaiter().GetResult();
     }
 
+    async Task ApplyPragmas(SqliteConnection con){
+        using var pragma = con.CreateCommand();
+      
+        pragma.CommandText = @"
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA cache_size = -20000;
+            PRAGMA temp_store = MEMORY;
+        ";
+        await pragma.ExecuteNonQueryAsync();
+
+        //GetPragmas(con);
+    }
+
+    void GetPragmas(SqliteConnection con)
+    {
+        using var cmd = con.CreateCommand();
+        string[] pragmas = ["journal_mode", "synchronous", "cache_size", "temp_store"];
+
+        foreach (var p in pragmas)
+        {
+            cmd.CommandText = $"PRAGMA {p};";
+            var value = cmd.ExecuteScalar();
+            Debug.WriteLine($"{p} = {value}");
+        }
+    }
+
     private async Task InitializeAsync()
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
-        var pragma = con.CreateCommand();
-        pragma.CommandText = "PRAGMA journal_mode = WAL;";
-        await pragma.ExecuteNonQueryAsync();
+        await ApplyPragmas(con);
 
         var createTable = con.CreateCommand();
         createTable.CommandText = """
@@ -52,7 +77,7 @@ public sealed class NodeImageStore
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
+        await ApplyPragmas(con);
         var cmd = con.CreateCommand();
         cmd.CommandText = """
         SELECT
@@ -83,7 +108,7 @@ public sealed class NodeImageStore
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
+        await ApplyPragmas(con);
         var cmd = con.CreateCommand();
         cmd.CommandText = """
         SELECT id, file_name, mime_type, length(image_data) AS size, created_utc
@@ -114,7 +139,7 @@ public sealed class NodeImageStore
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
+        await ApplyPragmas(con);
         var cmd = con.CreateCommand();
         cmd.CommandText = """
         INSERT INTO node_images(node_id, file_name, mime_type, image_data)
@@ -135,7 +160,7 @@ public sealed class NodeImageStore
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
+        await ApplyPragmas(con);
         var cmd = con.CreateCommand();
         cmd.CommandText = """
         SELECT id, node_id, file_name, mime_type, image_data
@@ -164,7 +189,7 @@ public sealed class NodeImageStore
     {
         await using var con = new SqliteConnection(_connectionString);
         await con.OpenAsync();
-
+        await ApplyPragmas(con);
         var cmd = con.CreateCommand();
         cmd.CommandText = "DELETE FROM node_images WHERE id = $id;";
         cmd.Parameters.AddWithValue("$id", id);

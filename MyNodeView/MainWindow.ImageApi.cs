@@ -20,9 +20,9 @@ public partial class MainWindow
         _imageStore = new NodeImageStore(dbPath);
     }
 
-    private void RegisterWebResourceRoutes()
+    private void RegisterWebResourceRoutes(string rootPath)
     {
-        _webRootPath = ResolveWebRootPath();
+        _webRootPath = rootPath;
         webView2.CoreWebView2.AddWebResourceRequestedFilter("https://mypage.test/*", CoreWebView2WebResourceContext.All);
         webView2.CoreWebView2.WebResourceRequested += OnWebResourceRequested;
     }
@@ -97,11 +97,6 @@ public partial class MainWindow
         var mimeType = GuessMimeType(candidatePath);
         var stream2 = new FileStream(candidatePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
         return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream2, 200, "OK", BuildStaticHeaders(mimeType));
-    }
-
-    private static string ResolveWebRootPath()
-    {
-        return @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist";
     }
 
     private static string GuessMimeType(string filePath)
