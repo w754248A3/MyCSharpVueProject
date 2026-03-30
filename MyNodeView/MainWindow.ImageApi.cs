@@ -105,13 +105,13 @@ public partial class MainWindow
         
         foreach (var item in res.Headers)
         {
-            res2.Headers.AppendHeader(item.Key, string.Join(';', item.Value));
+            res2.Headers.AppendHeader(item.Key, string.Join(',', item.Value));
             
         }
 
         foreach (var item in res.Content.Headers)
         {
-            res2.Headers.AppendHeader(item.Key, string.Join(';', item.Value));
+            res2.Headers.AppendHeader(item.Key, string.Join(',', item.Value));
             
         }
 
