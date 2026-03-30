@@ -326,6 +326,12 @@ const outText = ref<(s:string)=> void>((s)=> {});
   };
 
   const deleteImage = async (id: number) => {
+
+
+    if(!window.confirm("请确认是否删除")){
+      return;
+    }
+
     if (!terminalNode.value) return;
     try {
       const rsp = await fetch(`https://mypage.test/api/images/delete?id=${id}`, { method: "DELETE" });
@@ -350,16 +356,58 @@ const outText = ref<(s:string)=> void>((s)=> {});
     largePreviewUrl.value = "";
   };
 
-  const copyImageToClipboard = async () => {
+  const toPNG = async (blob:Blob)=>{
+
+    if(blob.type==="image/png"){
+      return blob;
+    }
+
+    const img = await createImageBitmap(blob);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    const ctx = canvas.getContext("2d");
+
+    if(!ctx){
+      throw Error("ctx 2d is null");
+    }
+
+    ctx.drawImage(img,0,0);
+
+    return await new Promise<Blob>((resolve, reject) => {
+    
+      canvas.toBlob((blob)=> blob?resolve(blob): reject(Error("toBlob is null")), "image/png");
+    });
+
+    
+
+  };
+
+
+  const copyImageToClipboard = async (e:MouseEvent) => {
     if (!largePreviewUrl.value) return;
     try {
       const rsp = await fetch(largePreviewUrl.value);
-      const blob = await rsp.blob();
+      const blob = await toPNG(await rsp.blob());
       await navigator.clipboard.write([
         new ClipboardItem({
           [blob.type || "image/png"]: blob,
         }),
       ]);
+
+      const b = e.target as HTMLButtonElement;
+      if(b){
+
+
+        b.disabled=true;
+
+        setTimeout(()=> b.disabled=false, 2000);
+
+      }
+
+
     } catch (error) {
       console.error(error);
     }

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
@@ -27,6 +28,13 @@ public partial class MainWindow
         webView2.CoreWebView2.WebResourceRequested += OnWebResourceRequested;
     }
 
+    
+#if DEBUG
+    private readonly HttpClient _hc = new HttpClient();
+    
+#endif
+
+
     private async void OnWebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {
         if (!e.Request.Uri.StartsWith("https://mypage.test/", StringComparison.OrdinalIgnoreCase))
@@ -37,9 +45,19 @@ public partial class MainWindow
         var deferral = e.GetDeferral();
         try
         {
-            e.Response = IsImageApiRequest(e.Request.Uri)
-                ? await HandleImageApiRequestAsync(e.Request)
-                : HandleStaticFileRequest(e.Request);
+
+            if(IsImageApiRequest(e.Request.Uri)){
+                e.Response =await HandleImageApiRequestAsync(e.Request);
+            }
+            else{
+#if DEBUG   
+                e.Response =await HandleDebugStaticFileRequest(e.Request);
+#else
+                e.Response =HandleStaticFileRequest(e.Request);
+#endif
+
+            }
+         
         }
         catch (Exception ex)
         {
@@ -56,9 +74,54 @@ public partial class MainWindow
     {
         return requestUri.StartsWith("https://mypage.test/api/images", StringComparison.OrdinalIgnoreCase);
     }
+#if DEBUG
+    private async  Task<CoreWebView2WebResourceResponse> HandleDebugStaticFileRequest(CoreWebView2WebResourceRequest request){
 
+        if (!string.Equals(request.Method, "GET", StringComparison.OrdinalIgnoreCase))
+        {
+            return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 405, "Method Not Allowed", BuildStaticHeaders("text/plain; charset=utf-8"));
+        }
+
+        var uri = new UriBuilder(request.Uri);
+
+        uri.Scheme="http";
+
+        uri.Host="localhost";
+
+        uri.Port=5173;
+
+        HttpRequestMessage rm = new HttpRequestMessage(HttpMethod.Get, uri.Uri);
+        
+        foreach (var item in request.Headers)
+        {
+            rm.Headers.Add(item.Key, item.Value);
+        }
+
+        var res = await _hc.SendAsync(rm);
+
+        var stream = await res.Content.ReadAsStreamAsync();
+
+        var res2 = webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, ((int)res.StatusCode), res.ReasonPhrase, "");
+        
+        foreach (var item in res.Headers)
+        {
+            res2.Headers.AppendHeader(item.Key, string.Join(';', item.Value));
+            
+        }
+
+        foreach (var item in res.Content.Headers)
+        {
+            res2.Headers.AppendHeader(item.Key, string.Join(';', item.Value));
+            
+        }
+
+
+        return res2;
+    }
+#endif
     private CoreWebView2WebResourceResponse HandleStaticFileRequest(CoreWebView2WebResourceRequest request)
     {
+
         if (!string.Equals(request.Method, "GET", StringComparison.OrdinalIgnoreCase))
         {
             return webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 405, "Method Not Allowed", BuildStaticHeaders("text/plain; charset=utf-8"));
