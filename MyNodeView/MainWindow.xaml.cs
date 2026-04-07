@@ -336,9 +336,9 @@ public partial class MainWindow : Window
 
     }
 
-    void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e){
+    string RunDataReadWriteSQL(string jsonString){
 
-        using var jsondoc = JsonDocument.Parse(e.WebMessageAsJson);
+        using var jsondoc = JsonDocument.Parse(jsonString);
 
 
         var type = jsondoc.RootElement.GetProperty("type").GetString();
@@ -355,7 +355,7 @@ public partial class MainWindow : Window
 
             var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.ADDNODE, Index= index, Value=obj});
 
-            webView2.CoreWebView2.PostWebMessageAsString(s);
+            return s;
         }
         else if(type == MessageType.QUERY){
 
@@ -366,7 +366,7 @@ public partial class MainWindow : Window
 
             var s = JsonSerializer.Serialize(new MessageData<QueryData>{Type= MessageType.QUERY, Index= index, Value=q});
 
-            webView2.CoreWebView2.PostWebMessageAsString(s);
+            return s;
         }
         else if(type == MessageType.SEARCH){
 
@@ -394,8 +394,7 @@ public partial class MainWindow : Window
                
             var s = JsonSerializer.Serialize(new MessageData<List<NodeSearchResult>>{Type= MessageType.SEARCH, Index= index, Value=vs});
 
-
-            webView2.CoreWebView2.PostWebMessageAsString(s);
+            return s;
         }
         else if(type == MessageType.UPDATA){
 
@@ -406,14 +405,14 @@ public partial class MainWindow : Window
             
             var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.UPDATA, Index= index, Value=obj});
 
-            webView2.CoreWebView2.PostWebMessageAsString(s);
+            return s;
         }
         else if(type == MessageType.CLIPBOARDHISTORY){
             
             var vs = _记录粘贴板.ToList().Reverse<string>().ToList();
             var s = JsonSerializer.Serialize(new MessageData<List<string>>{Type= MessageType.CLIPBOARDHISTORY, Index= index, Value=vs});
 
-            webView2.CoreWebView2.PostWebMessageAsString(s);
+            return s;
         }
         else{
             throw new IndexOutOfRangeException("没有这个消息类型");
@@ -541,8 +540,7 @@ public partial class MainWindow : Window
         await webView2.EnsureCoreWebView2Async(environment);
         RegisterWebResourceRoutes(@"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist");
         webView2.CoreWebView2.Navigate("https://mypage.test/");
-        webView2.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-
+      
 
 
        

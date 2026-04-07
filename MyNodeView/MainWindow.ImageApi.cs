@@ -46,7 +46,39 @@ public partial class MainWindow
         try
         {
 
-            if(IsImageApiRequest(e.Request.Uri)){
+
+            if(IsDataApiRequest(e.Request.Uri)){
+
+                if(e.Request.Method != "POST"){
+                    e.Response = SetErrorResponse("Method is not post");
+                    return;
+                }
+
+                
+                if(e.Request.Headers.GetHeader("Content-Type") != "application/json"){
+                    e.Response = SetErrorResponse("Content-Type is not json");
+                    return;
+                }
+                
+                var ms = new MemoryStream();
+
+                await e.Request.Content.CopyToAsync(ms);
+
+                ms.Position=0;
+
+                var s = Encoding.UTF8.GetString(ms.ToArray());
+
+                var res = RunDataReadWriteSQL(s);
+
+                var by = Encoding.UTF8.GetBytes(res);
+
+                var resms = new MemoryStream(by);
+               
+                var response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(resms, 200, "OK", BuildStaticHeaders("application/json", by.Length));
+                e.Response = response;
+                 
+            }
+            else if(IsImageApiRequest(e.Request.Uri)){
                 e.Response =await HandleImageApiRequestAsync(e.Request);
             }
             else{
@@ -61,13 +93,22 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes($"{{\"error\":\"{EscapeJson(ex.Message)}\"}}"));
-            e.Response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("application/json"));
+            e.Response = SetErrorResponse(ex.Message);
         }
         finally
         {
             deferral.Complete();
         }
+    }
+
+    CoreWebView2WebResourceResponse SetErrorResponse(string message){
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes($"{{\"error\":\"{EscapeJson(message)}\"}}"));
+        return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("application/json"));
+    }
+
+    private bool IsDataApiRequest(string requestUri)
+    {
+        return requestUri.StartsWith("https://mypage.test/api/data", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsImageApiRequest(string requestUri)

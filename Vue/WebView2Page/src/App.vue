@@ -46,58 +46,36 @@ type FunctionMap = {
 const messageFunc = (() => {
 
 
-  ((<any>window).chrome).webview.addEventListener('message', (event: any) => {
-
-    const obj = <MessageData>JSON.parse(event.data);
-    
-    const func = map.get(obj.index);
-
-
-    if (!func) {
-      throw new Error("map get value error");
-    }
-
-    map.delete(obj.index);
-
-    func(obj);
-
-
-  });
-
-  function sendToDotNet(message: MessageData) {
-
-    ((<any>window).chrome).webview.postMessage(message);
-  }
-
-  const sendToDotNetWithTypeIndex = (<T>(type: string, value: any) => {
+  const sendToDotNetWithTypeIndex =  (async <T>(type: string, value: any) =>  {
 
     const index = getIndex();
 
-    return new Promise<T>((res) => {
+    const obj = { type: type, index: index, value: value }as MessageData;
 
-      sendToDotNet({ type: type, index: index, value: value });
+      
 
-      map.set(index, (data) => {
-
-
-
-        if (data.type !== type) {
-          throw new Error("map get value type error");
+      const res = await fetch("/api/data", {
+        method:"POST",
+        body:JSON.stringify(obj),
+        headers:{
+          "Content-Type":"application/json"
         }
-
-        res(data.value);
-
-
-
       });
 
+      const json = (await res.json()) as MessageData;
 
+      if(json.type !== type){
+        throw new Error("res value type error");
+      }
 
-    });
+      if(json.index !== index){
+        throw new Error("res value index error");
+      }
+
+      return json.value as T;
+
   });
 
-
-  const map = new Map<number, (data: MessageData) => void>();
 
   let index = 0;
 
