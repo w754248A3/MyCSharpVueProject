@@ -10,12 +10,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <StartupObject>MyNodeView.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3351.48" />
     <PackageReference Include="linq2db" Version="4.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
   </ItemGroup>
+
 
 </Project>

@@ -40,15 +40,39 @@ public partial class MainWindow : Window
         InitializeComponent();
 
 
+        this.Loaded+=Window_Loaded;
+        
+    }
+
+
+    private async void Window_Loaded(object sender, RoutedEventArgs e){
+
         InitData();
         InitImageStore();
         InitWebView2();
 
-        
+        this.Loaded-=Window_Loaded;
+
     }
     private void ReLoad_Click(object sender, RoutedEventArgs e)
     {
         webView2.CoreWebView2.Reload();
+    }
+
+    string _webapimesage="";
+    private void Message_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show(_webapimesage);
+    }
+
+    public void UpdateMessage(string message)
+    {
+        // 重点：Web API 运行在后台线程，WPF UI 只能在主线程更新。
+        // 所以必须使用 Dispatcher 切换回 UI 线程！
+        Dispatcher.Invoke(() =>
+        {
+            _webapimesage = message;
+        });
     }
 
     DataConnection _con;

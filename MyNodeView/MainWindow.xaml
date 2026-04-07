@@ -21,6 +21,8 @@
                 <MenuItem Header="_导出" Click="Export_Click"/>
                 <Separator/>
                 <MenuItem Header="_导入" Click="Import_Click"/>
+                <Separator/>
+                <MenuItem Header="_Message" Click="Message_Click"/>
             </MenuItem>
 
         </Menu>
