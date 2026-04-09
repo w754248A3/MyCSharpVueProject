@@ -68,7 +68,7 @@ public partial class MainWindow
 
                 var s = Encoding.UTF8.GetString(ms.ToArray());
 
-                var res = RunDataReadWriteSQL(s);
+                var res = await RunDataReadWriteSQL(s);
 
                 var by = Encoding.UTF8.GetBytes(res);
 

@@ -44,10 +44,10 @@ public partial class MainWindow : Window
         
     }
 
-
+    MyNodeDataStore _dataStore;
     private async void Window_Loaded(object sender, RoutedEventArgs e){
 
-        InitData();
+        _dataStore = await MyNodeDataStore.Create();
         InitImageStore();
         InitWebView2();
 
@@ -86,12 +86,7 @@ public partial class MainWindow : Window
 
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-        var vs = _con.GetTable<NodeData>().TableName("nodesTable").ToList();
 
-        var json = JsonSerializer.Serialize(vs);
-
-
-        File.WriteAllText("json_data.json", json, Encoding.UTF8);
 
     }
 
@@ -109,7 +104,7 @@ public partial class MainWindow : Window
 
     
 
-    string RunDataReadWriteSQL(string jsonString){
+    async Task<string> RunDataReadWriteSQL(string jsonString){
 
         using var jsondoc = JsonDocument.Parse(jsonString);
 
@@ -122,7 +117,7 @@ public partial class MainWindow : Window
         {
             var obj = jsondoc.RootElement.GetProperty("value").Deserialize<NodeData>();
 
-            var id = Inset(obj);
+            var id = await _dataStore.Inset(obj);
 
             obj.Id=id;
 
@@ -135,7 +130,7 @@ public partial class MainWindow : Window
             var id = jsondoc.RootElement.GetProperty("value").GetInt32();
 
 
-            var q = QueryFunc(id);
+            var q = await _dataStore.QueryFunc(id);
 
             var s = JsonSerializer.Serialize(new MessageData<QueryData>{Type= MessageType.QUERY, Index= index, Value=q});
 
@@ -150,11 +145,11 @@ public partial class MainWindow : Window
             try{
 
                 if(string.IsNullOrWhiteSpace(searchText)){
-                    var roots = SearchFunc();
+                    var roots = await _dataStore.SearchFunc();
                     vs = roots.Select(r => new NodeSearchResult { Item = r, Parents = new List<NodeData>() }).ToList();
                 }
                 else{
-                    vs = SearchNodesWithFullPath(searchText);
+                    vs = await _dataStore.SearchNodesWithFullPath(searchText);
                 }
             }
             catch(SqliteException ex){
@@ -173,7 +168,7 @@ public partial class MainWindow : Window
 
             var obj = jsondoc.RootElement.GetProperty("value").Deserialize<NodeData>();
 
-            obj = UpData(obj);
+            obj = await _dataStore.UpData(obj);
 
             
             var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.UPDATA, Index= index, Value=obj});

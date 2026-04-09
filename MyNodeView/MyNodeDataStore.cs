@@ -12,12 +12,40 @@ namespace MyNodeView;
 
 
 
+public sealed class MyAsyncRunSql{
+
+
+
+    readonly object _lock =new();
+    public Task<T> Run<T>(Func<T> func){
+
+        return Task.Run(()=>{
+            lock(_lock){
+                return func();
+            }
+        });
+    }
+}
+
+
 public sealed class MyNodeDataStore{
 
 
     DataConnection _con;
+    readonly MyAsyncRunSql _run= new();
+    private MyNodeDataStore(){
 
+    }
 
+    public static Task<MyNodeDataStore> Create(){
+        var obj = new MyNodeDataStore();
+
+        return obj._run.Run(()=> {
+            obj.InitData();
+            return obj;
+        
+        });
+    }
 
     void InitData(){
 
@@ -91,46 +119,48 @@ public sealed class MyNodeDataStore{
 
     
 
-    int Inset(NodeData data){
-        using(var tr= _con.BeginTransaction()){
+    int Inset2(NodeData data){
+        using var tr = _con.BeginTransaction();
+
+        var id = _con.InsertWithInt32Identity(new { parent_id = data.Parent_Id, text = data.Text }, tableName: "nodesTable");
 
 
-           var id =  _con.InsertWithInt32Identity(new { parent_id =data.Parent_Id, text = data.Text}, tableName:"nodesTable");
+        _con.Insert(new { rowid = id, Value = data.Text }, tableName: "textSearchTable");
 
 
-           _con.Insert(new {rowid = id, Value=data.Text}, tableName:"textSearchTable");
+        tr.Commit();
 
-
-            tr.Commit();
-
-            return id;
-        }
+        return id;
     }
 
-    NodeData UpData(NodeData data){
-        using(var tr= _con.BeginTransaction()){
-
-
-           _con.GetTable<NodeData>().TableName("nodesTable")
-           .Where(p=> p.Id== data.Id)
-           .Set(p=>p.Text, data.Text)
-           .Update();
-           
-
-
-            _con.GetTable<SearchData>().TableName("textSearchTable")
-           .Where(p=> _ex.RowId(p)== data.Id)
-           .Set(p=>p.Value, data.Text)
-           .Update();
-
-            tr.Commit();
-
-            return data;
-        }
+    public Task<int> Inset(NodeData data){
+        return _run.Run(()=> Inset2(data));
     }
 
+    NodeData UpData2(NodeData data){
+        using var tr = _con.BeginTransaction();
+        _con.GetTable<NodeData>().TableName("nodesTable")
+        .Where(p => p.Id == data.Id)
+        .Set(p => p.Text, data.Text)
+        .Update();
 
-    QueryData QueryFunc(int id){
+
+
+        _con.GetTable<SearchData>().TableName("textSearchTable")
+       .Where(p => _ex.RowId(p) == data.Id)
+       .Set(p => p.Value, data.Text)
+       .Update();
+
+        tr.Commit();
+
+        return data;
+    }
+
+    public Task<NodeData> UpData(NodeData data){
+        return _run.Run(()=> UpData2(data));
+    }
+
+    QueryData QueryFunc2(int id){
 
         var obj = _con.GetTable<NodeData>().TableName("nodesTable")
         .Where(p=> p.Id==id).First();
@@ -146,6 +176,10 @@ public sealed class MyNodeDataStore{
 
     }
 
+    public Task<QueryData> QueryFunc(int id){
+        return _run.Run(()=> QueryFunc2(id));
+    }
+
     public class SearchData
     {
         [LinqToDB.Mapping.Column("rowid")]
@@ -156,7 +190,7 @@ public sealed class MyNodeDataStore{
     }
 
     readonly ISQLiteExtensions _ex = Sql.Ext.SQLite();
-    List<NodeData> SearchFunc(string searchText){
+    List<NodeData> SearchFunc2(string searchText){
 
         var vs = _con.GetTable<SearchData>().TableName("textSearchTable")
         .Where(p=> _ex.Match(p.Value, searchText))
@@ -174,6 +208,12 @@ public sealed class MyNodeDataStore{
 
     }
 
+
+
+    public Task<List<NodeData>> SearchFunc(string searchText){
+        return _run.Run(()=> SearchFunc2(searchText));
+    }
+
     /// <summary>
     /// 全文搜索节点并返回从根节点到匹配节点的完整路径。
     /// </summary>
@@ -181,7 +221,7 @@ public sealed class MyNodeDataStore{
     /// <param name="maxResults">限制返回的最大结果数量，默认值为 10。</param>
     /// <returns>包含匹配节点及其父节点路径的列表。</returns>
     /// <exception cref="Exception">当数据库操作失败时抛出封装后的异常。</exception>
-    public List<NodeSearchResult> SearchNodesWithFullPath(string searchKeyword, int maxResults = 10)
+    List<NodeSearchResult> SearchNodesWithFullPath2(string searchKeyword, int maxResults = 10)
     {
         if (string.IsNullOrWhiteSpace(searchKeyword))
         {
@@ -258,7 +298,12 @@ public sealed class MyNodeDataStore{
         }
     }
 
-    List<NodeData> SearchFunc(){
+
+    public Task<List<NodeSearchResult>> SearchNodesWithFullPath(string searchKeyword, int maxResults = 10){
+        return _run.Run(()=> SearchNodesWithFullPath2(searchKeyword, maxResults));
+    }
+
+    List<NodeData> SearchFunc2(){
 
         var vs = _con.GetTable<NodeData>().TableName("nodesTable")
         .Where(p=> p.Parent_Id == null)
@@ -273,7 +318,9 @@ public sealed class MyNodeDataStore{
 
     }
 
-
+    public Task<List<NodeData>> SearchFunc(){
+        return _run.Run(()=> SearchFunc2());
+    }
 
 }
 
