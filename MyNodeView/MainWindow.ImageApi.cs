@@ -81,6 +81,24 @@ public partial class MainWindow
             else if(IsImageApiRequest(e.Request.Uri)){
                 e.Response =await HandleImageApiRequestAsync(e.Request);
             }
+            else if (IsClipboardHistoryApiRequest(e.Request.Uri)){
+                
+                if (!string.Equals(e.Request.Method, "GET", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Response =webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 405, "Method Not Allowed", BuildStaticHeaders("text/plain; charset=utf-8"));
+                
+                    return;
+                }
+
+                var jsonStr = GetClipboardListJson();
+
+                var by = Encoding.UTF8.GetBytes(jsonStr);
+
+                var resms = new MemoryStream(by);
+               
+                var response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(resms, 200, "OK", BuildStaticHeaders("application/json", by.Length));
+                e.Response = response;
+            }
             else{
 #if DEBUG   
                 e.Response =await HandleDebugStaticFileRequest(e.Request);
@@ -104,6 +122,12 @@ public partial class MainWindow
     CoreWebView2WebResourceResponse SetErrorResponse(string message){
         var stream = new MemoryStream(Encoding.UTF8.GetBytes($"{{\"error\":\"{EscapeJson(message)}\"}}"));
         return webView2.CoreWebView2.Environment.CreateWebResourceResponse(stream, 500, "Internal Server Error", BuildStaticHeaders("application/json"));
+    }
+
+    
+    private bool IsClipboardHistoryApiRequest(string requestUri)
+    {
+        return requestUri.StartsWith("https://mypage.test/api/clipboardhistory", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsDataApiRequest(string requestUri)

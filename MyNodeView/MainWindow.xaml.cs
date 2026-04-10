@@ -175,13 +175,6 @@ public partial class MainWindow : Window
 
             return s;
         }
-        else if(type == MessageType.CLIPBOARDHISTORY){
-            
-            var vs = _记录粘贴板.ToList().Reverse<string>().ToList();
-            var s = JsonSerializer.Serialize(new MessageData<List<string>>{Type= MessageType.CLIPBOARDHISTORY, Index= index, Value=vs});
-
-            return s;
-        }
         else{
             throw new IndexOutOfRangeException("没有这个消息类型");
         }
@@ -200,8 +193,6 @@ public partial class MainWindow : Window
 
 
         public const string UPDATA = "UPDATA";
-
-        public const string CLIPBOARDHISTORY ="CLIPBOARDHISTORY";
     }
 
     async void InitWebView2(){
@@ -330,6 +321,14 @@ public partial class MainWindow : Window
         }
         
 
+    }
+
+    string GetClipboardListJson(){
+        
+        var vs = _记录粘贴板.ToList().Reverse<string>().ToList();
+        var s = JsonSerializer.Serialize(vs);
+
+        return s;
     }
 
 

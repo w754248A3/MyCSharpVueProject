@@ -33,13 +33,6 @@ type FunctionMap = {
     args: NodeData;
     return: Promise<NodeData>;
   };
-
-
-  CLIPBOARDHISTORY:{
-    args:number;
-    return:Promise<string[]>;
-  }
-
 };
 
 
@@ -244,10 +237,21 @@ const initRootNodeListPageData= async ()=>{
 };
 
 
+const getClipboardHistory = async ()=>{
+
+  const res = await fetch("/api/clipboardhistory");
+
+  const json = (await res.json())as string[];
+
+  return json;
+
+};
+
+
 const onViewClipboardHistory = async ()=>{
 
   
-  const vs = await messageFunc("CLIPBOARDHISTORY", 0);
+  const vs = await getClipboardHistory();
  
   addTabValue.value = {
     text: `粘贴板 ${new Date().toLocaleTimeString()}`,
