@@ -1,5 +1,8 @@
 <template>
   <div class="survey-tree">
+    <div v-if="canBackToParent" class="root-nav">
+      <button class="root-nav-btn" @click="switchToParentRoot">返回上级节点</button>
+    </div>
     <div v-for="(node, index) in displayedNodes" :key="node.id" class="node-section">
       <!-- 标题 -->
       <div v-if="node.options.length !== 0" class="node-title" @click="toggleNode(node.id)">
@@ -238,8 +241,34 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const initRootNode = async () => {
     const root = await findChildNode(props.id);
     if (root) {
-      displayedNodes.value = [root];
-      collapsed[root.id] = false;
+      setSingleRoot(root);
+    }
+  };
+
+  const currentRootNode = computed(() => displayedNodes.value[0] ?? null);
+  const canBackToParent = computed(() => currentRootNode.value?.parentId != null);
+
+  const resetSelectionState = () => {
+    for (const key in selected) {
+      delete selected[Number(key)];
+    }
+    for (const key in collapsed) {
+      delete collapsed[Number(key)];
+    }
+  };
+
+  const setSingleRoot = (root: ViewTreeData) => {
+    resetSelectionState();
+    displayedNodes.value = [root];
+    collapsed[root.id] = false;
+  };
+
+  const switchToParentRoot = async () => {
+    const parentId = currentRootNode.value?.parentId;
+    if (parentId == null) return;
+    const parentRoot = await findChildNode(parentId);
+    if (parentRoot) {
+      setSingleRoot(parentRoot);
     }
   };
 
@@ -510,6 +539,27 @@ const outText = ref<(s:string)=> void>((s)=> {});
   flex-direction: column;
   overflow: visible;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.root-nav {
+  margin-bottom: 12px;
+}
+
+.root-nav-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.root-nav-btn:hover {
+  background: #409eff;
+  border-color: #409eff;
+  color: #ffffff;
 }
 
 .node-section {
