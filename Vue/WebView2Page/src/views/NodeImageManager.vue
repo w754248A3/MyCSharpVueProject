@@ -87,17 +87,6 @@ const imageListRequestSeq = ref(0);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const largePreviewUrl = ref("");
 
-watch(
-  () => props.nodeId,
-  (newNodeId) => {
-    isImageModalOpen.value = false;
-    imageList.value = [];
-    largePreviewUrl.value = "";
-    loadImageSummary(newNodeId);
-  },
-  { immediate: true }
-);
-
 const getImageUrl = (id: number) => `https://mypage.test/api/images/content?id=${id}`;
 
 const loadImageSummary = async (nodeId: number) => {
@@ -256,6 +245,17 @@ const formatSize = (size: number) => {
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
+
+watch(
+  () => props.nodeId,
+  (newNodeId) => {
+    isImageModalOpen.value = false;
+    imageList.value = [];
+    largePreviewUrl.value = "";
+    loadImageSummary(newNodeId);
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>
