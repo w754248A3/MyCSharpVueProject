@@ -9,7 +9,19 @@
         class="list-item"
         :title="item.path ? `${item.path} -> ${item.text}` : item.text"
       >
-        <div v-if="item.path" class="item-path">{{ item.path }}</div>
+        <div v-if="item.path" class="item-path">
+          <template v-if="item.pathNodes && item.pathNodes.length > 0">
+            <template v-for="(node, nodeIndex) in item.pathNodes" :key="node.id">
+              <button class="path-node" @click.stop="handlePathClick(node, index)">
+                {{ node.title }}
+              </button>
+              <span v-if="nodeIndex < item.pathNodes.length - 1" class="path-separator"> -> </span>
+            </template>
+          </template>
+          <template v-else>
+            {{ item.path }}
+          </template>
+        </div>
         <div class="item-text">{{ item.text }}</div>
       </li>
     </ul>
@@ -43,6 +55,11 @@ watch(
 function handleClick(item: ListItem, index: number) {
   selectedIndex.value = index
   emit('item-click', { text: item.text, id: item.id })
+}
+
+function handlePathClick(node: { id: number; title: string }, index: number) {
+  selectedIndex.value = index
+  emit('item-click', { text: node.title, id: node.id })
 }
 </script>
 
@@ -90,6 +107,26 @@ function handleClick(item: ListItem, index: number) {
   text-overflow: ellipsis;
   margin-bottom: 2px;
   line-height: 1.2;
+}
+
+.path-node {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  line-height: inherit;
+}
+
+.path-node:hover {
+  color: #409eff;
+  text-decoration: underline;
+}
+
+.path-separator {
+  color: inherit;
 }
 
 .item-text {

@@ -4,6 +4,7 @@ export interface ListItem {
   text: string
   id: number
   path?: string
+  pathNodes?: NodeData[]
   type?: 'survey' | 'clipboard'
   content?: string
 }

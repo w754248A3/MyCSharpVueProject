@@ -98,7 +98,8 @@ const handleSearch2 = async (value: string) => {
     return { 
       text: v.item.title, 
       id: v.item.id,
-      path: v.parents.length > 0 ? v.parents.map(p => p.title).join(" -> ") : undefined
+      path: v.parents.length > 0 ? v.parents.map(p => p.title).join(" -> ") : undefined,
+      pathNodes: v.parents.length > 0 ? v.parents.map(p => ({ id: p.id, parentId: p.parentId, title: p.title })) : undefined
     } 
   });
   listPageData.value = fvs;
