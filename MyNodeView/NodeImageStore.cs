@@ -3,9 +3,12 @@ using Microsoft.Data.Sqlite;
 
 namespace MyNodeView;
 
-public sealed class NodeImageStore
+public sealed class NodeImageStore : IDisposable
 {
     private readonly string _connectionString;
+    private readonly SqliteConnection _connection;
+    private readonly object _lock = new();
+    private bool _disposed;
 
     public NodeImageStore(string dbPath)
     {
@@ -16,19 +19,43 @@ public sealed class NodeImageStore
             DataSource = dbPath
         }.ToString();
 
+        _connection = new SqliteConnection(_connectionString);
         InitializeAsync().GetAwaiter().GetResult();
     }
 
-    async Task ApplyPragmas(SqliteConnection con){
+    private Task<T> RunSerializedAsync<T>(Func<T> func)
+    {
+        return Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                return func();
+            }
+        });
+    }
+
+    private Task RunSerializedAsync(Action action)
+    {
+        return Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                action();
+            }
+        });
+    }
+
+    void ApplyPragmas(SqliteConnection con)
+    {
         using var pragma = con.CreateCommand();
-      
+
         pragma.CommandText = @"
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA cache_size = -20000;
             PRAGMA temp_store = MEMORY;
         ";
-        await pragma.ExecuteNonQueryAsync();
+        pragma.ExecuteNonQuery();
 
         //GetPragmas(con);
     }
@@ -46,13 +73,22 @@ public sealed class NodeImageStore
         }
     }
 
-    private async Task InitializeAsync()
+    private void ThrowIfDisposed()
     {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(NodeImageStore));
+        }
+    }
 
-        var createTable = con.CreateCommand();
+    private void Initialize()
+    {
+        _connection.Open();
+        ApplyPragmas(_connection);
+        using var tr = _connection.BeginTransaction();
+
+        using var createTable = _connection.CreateCommand();
+        createTable.Transaction = tr;
         createTable.CommandText = """
         CREATE TABLE IF NOT EXISTS node_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,139 +99,198 @@ public sealed class NodeImageStore
             created_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
         """;
-        await createTable.ExecuteNonQueryAsync();
+        createTable.Prepare();
+        createTable.ExecuteNonQuery();
 
-        var createIndex = con.CreateCommand();
+        using var createIndex = _connection.CreateCommand();
+        createIndex.Transaction = tr;
         createIndex.CommandText = """
         CREATE INDEX IF NOT EXISTS idx_node_images_node_id
         ON node_images(node_id, id DESC);
         """;
-        await createIndex.ExecuteNonQueryAsync();
+        createIndex.Prepare();
+        createIndex.ExecuteNonQuery();
+
+        tr.Commit();
     }
 
-    public async Task<NodeImageSummary> GetSummaryAsync(int nodeId)
+    private Task InitializeAsync()
     {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
-        var cmd = con.CreateCommand();
-        cmd.CommandText = """
-        SELECT
-            COUNT(1) AS total_count,
-            (
-                SELECT id
-                FROM node_images
-                WHERE node_id = $nodeId
-                ORDER BY id DESC
-                LIMIT 1
-            ) AS latest_id
-        FROM node_images
-        WHERE node_id = $nodeId;
-        """;
-        cmd.Parameters.AddWithValue("$nodeId", nodeId);
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-
-        return new NodeImageSummary
-        {
-            Count = reader.GetInt32(0),
-            LatestImageId = reader.IsDBNull(1) ? null : reader.GetInt64(1)
-        };
+        return RunSerializedAsync(Initialize);
     }
 
-    public async Task<List<NodeImageInfo>> ListAsync(int nodeId)
+    public Task<NodeImageSummary> GetSummaryAsync(int nodeId)
     {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
-        var cmd = con.CreateCommand();
-        cmd.CommandText = """
-        SELECT id, file_name, mime_type, length(image_data) AS size, created_utc
-        FROM node_images
-        WHERE node_id = $nodeId
-        ORDER BY id DESC;
-        """;
-        cmd.Parameters.AddWithValue("$nodeId", nodeId);
-
-        var list = new List<NodeImageInfo>();
-        await using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        return RunSerializedAsync(() =>
         {
-            list.Add(new NodeImageInfo
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = tr;
+            cmd.CommandText = """
+            SELECT
+                COUNT(1) AS total_count,
+                (
+                    SELECT id
+                    FROM node_images
+                    WHERE node_id = $nodeId
+                    ORDER BY id DESC
+                    LIMIT 1
+                ) AS latest_id
+            FROM node_images
+            WHERE node_id = $nodeId;
+            """;
+            cmd.Parameters.AddWithValue("$nodeId", nodeId);
+            cmd.Prepare();
+
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            var result = new NodeImageSummary
+            {
+                Count = reader.GetInt32(0),
+                LatestImageId = reader.IsDBNull(1) ? null : reader.GetInt64(1)
+            };
+
+            tr.Commit();
+            return result;
+        });
+    }
+
+    public Task<List<NodeImageInfo>> ListAsync(int nodeId)
+    {
+        return RunSerializedAsync(() =>
+        {
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = tr;
+            cmd.CommandText = """
+            SELECT id, file_name, mime_type, length(image_data) AS size, created_utc
+            FROM node_images
+            WHERE node_id = $nodeId
+            ORDER BY id DESC;
+            """;
+            cmd.Parameters.AddWithValue("$nodeId", nodeId);
+            cmd.Prepare();
+
+            var list = new List<NodeImageInfo>();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new NodeImageInfo
+                {
+                    Id = reader.GetInt64(0),
+                    FileName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                    MimeType = reader.GetString(2),
+                    Size = reader.GetInt64(3),
+                    CreatedUtc = reader.GetString(4)
+                });
+            }
+
+            tr.Commit();
+            return list;
+        });
+    }
+
+    public Task<long> InsertAsync(int nodeId, string? fileName, string mimeType, byte[] imageData)
+    {
+        return RunSerializedAsync(() =>
+        {
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = tr;
+            cmd.CommandText = """
+            INSERT INTO node_images(node_id, file_name, mime_type, image_data)
+            VALUES($nodeId, $fileName, $mimeType, $imageData);
+            SELECT last_insert_rowid();
+            """;
+
+            cmd.Parameters.AddWithValue("$nodeId", nodeId);
+            cmd.Parameters.AddWithValue("$fileName", (object?)fileName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$mimeType", mimeType);
+            cmd.Parameters.Add("$imageData", SqliteType.Blob).Value = imageData;
+            cmd.Prepare();
+
+            var result = cmd.ExecuteScalar();
+            tr.Commit();
+            return Convert.ToInt64(result);
+        });
+    }
+
+    public Task<NodeImageBlob?> GetImageAsync(long id)
+    {
+        return RunSerializedAsync(() =>
+        {
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = tr;
+            cmd.CommandText = """
+            SELECT id, node_id, file_name, mime_type, image_data
+            FROM node_images
+            WHERE id = $id;
+            """;
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Prepare();
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                tr.Commit();
+                return null;
+            }
+
+            var result = new NodeImageBlob
             {
                 Id = reader.GetInt64(0),
-                FileName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                MimeType = reader.GetString(2),
-                Size = reader.GetInt64(3),
-                CreatedUtc = reader.GetString(4)
-            });
-        }
+                NodeId = reader.GetInt32(1),
+                FileName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                MimeType = reader.GetString(3),
+                Data = (byte[])reader[4]
+            };
 
-        return list;
+            tr.Commit();
+            return result;
+        });
     }
 
-    public async Task<long> InsertAsync(int nodeId, string? fileName, string mimeType, byte[] imageData)
+    public Task<bool> DeleteAsync(long id)
     {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
-        var cmd = con.CreateCommand();
-        cmd.CommandText = """
-        INSERT INTO node_images(node_id, file_name, mime_type, image_data)
-        VALUES($nodeId, $fileName, $mimeType, $imageData);
-        SELECT last_insert_rowid();
-        """;
-
-        cmd.Parameters.AddWithValue("$nodeId", nodeId);
-        cmd.Parameters.AddWithValue("$fileName", (object?)fileName ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$mimeType", mimeType);
-        cmd.Parameters.Add("$imageData", SqliteType.Blob).Value = imageData;
-
-        var result = await cmd.ExecuteScalarAsync();
-        return Convert.ToInt64(result);
-    }
-
-    public async Task<NodeImageBlob?> GetImageAsync(long id)
-    {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
-        var cmd = con.CreateCommand();
-        cmd.CommandText = """
-        SELECT id, node_id, file_name, mime_type, image_data
-        FROM node_images
-        WHERE id = $id;
-        """;
-        cmd.Parameters.AddWithValue("$id", id);
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
+        return RunSerializedAsync(() =>
         {
-            return null;
-        }
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-        return new NodeImageBlob
-        {
-            Id = reader.GetInt64(0),
-            NodeId = reader.GetInt32(1),
-            FileName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-            MimeType = reader.GetString(3),
-            Data = (byte[])reader[4]
-        };
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = tr;
+            cmd.CommandText = "DELETE FROM node_images WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Prepare();
+
+            var affected = cmd.ExecuteNonQuery();
+            tr.Commit();
+            return affected > 0;
+        });
     }
 
-    public async Task<bool> DeleteAsync(long id)
+    public void Dispose()
     {
-        await using var con = new SqliteConnection(_connectionString);
-        await con.OpenAsync();
-        await ApplyPragmas(con);
-        var cmd = con.CreateCommand();
-        cmd.CommandText = "DELETE FROM node_images WHERE id = $id;";
-        cmd.Parameters.AddWithValue("$id", id);
+        lock (_lock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
 
-        var affected = await cmd.ExecuteNonQueryAsync();
-        return affected > 0;
+            _connection.Dispose();
+            _disposed = true;
+        }
     }
 }
 
