@@ -75,8 +75,8 @@ public sealed class NodeImageStore
         using var con = new SqliteConnection(_connectionString);
         con.Open();
 
-        using var tr = con.BeginTransaction();
         ApplyPragmas(con);
+        using var tr = con.BeginTransaction();
 
         using var createTable = con.CreateCommand();
         createTable.Transaction = tr;
@@ -117,8 +117,8 @@ public sealed class NodeImageStore
             using var con = new SqliteConnection(_connectionString);
             con.Open();
 
-            using var tr = con.BeginTransaction();
             ApplyPragmas(con);
+            using var tr = con.BeginTransaction();
 
             using var cmd = con.CreateCommand();
             cmd.Transaction = tr;
@@ -159,8 +159,8 @@ public sealed class NodeImageStore
             using var con = new SqliteConnection(_connectionString);
             con.Open();
 
-            using var tr = con.BeginTransaction();
             ApplyPragmas(con);
+            using var tr = con.BeginTransaction();
 
             using var cmd = con.CreateCommand();
             cmd.Transaction = tr;
@@ -199,8 +199,8 @@ public sealed class NodeImageStore
             using var con = new SqliteConnection(_connectionString);
             con.Open();
 
-            using var tr = con.BeginTransaction();
             ApplyPragmas(con);
+            using var tr = con.BeginTransaction();
 
             using var cmd = con.CreateCommand();
             cmd.Transaction = tr;
@@ -229,8 +229,8 @@ public sealed class NodeImageStore
             using var con = new SqliteConnection(_connectionString);
             con.Open();
 
-            using var tr = con.BeginTransaction();
             ApplyPragmas(con);
+            using var tr = con.BeginTransaction();
 
             using var cmd = con.CreateCommand();
             cmd.Transaction = tr;
@@ -270,8 +270,8 @@ public sealed class NodeImageStore
             using var con = new SqliteConnection(_connectionString);
             con.Open();
 
-            using var tr = con.BeginTransaction();
             ApplyPragmas(con);
+            using var tr = con.BeginTransaction();
 
             using var cmd = con.CreateCommand();
             cmd.Transaction = tr;
