@@ -3,10 +3,12 @@ using Microsoft.Data.Sqlite;
 
 namespace MyNodeView;
 
-public sealed class NodeImageStore
+public sealed class NodeImageStore : IDisposable
 {
     private readonly string _connectionString;
+    private readonly SqliteConnection _connection;
     private readonly object _lock = new();
+    private bool _disposed;
 
     public NodeImageStore(string dbPath)
     {
@@ -17,6 +19,7 @@ public sealed class NodeImageStore
             DataSource = dbPath
         }.ToString();
 
+        _connection = new SqliteConnection(_connectionString);
         InitializeAsync().GetAwaiter().GetResult();
     }
 
@@ -70,15 +73,21 @@ public sealed class NodeImageStore
         }
     }
 
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(NodeImageStore));
+        }
+    }
+
     private void Initialize()
     {
-        using var con = new SqliteConnection(_connectionString);
-        con.Open();
+        _connection.Open();
+        ApplyPragmas(_connection);
+        using var tr = _connection.BeginTransaction();
 
-        ApplyPragmas(con);
-        using var tr = con.BeginTransaction();
-
-        using var createTable = con.CreateCommand();
+        using var createTable = _connection.CreateCommand();
         createTable.Transaction = tr;
         createTable.CommandText = """
         CREATE TABLE IF NOT EXISTS node_images (
@@ -93,7 +102,7 @@ public sealed class NodeImageStore
         createTable.Prepare();
         createTable.ExecuteNonQuery();
 
-        using var createIndex = con.CreateCommand();
+        using var createIndex = _connection.CreateCommand();
         createIndex.Transaction = tr;
         createIndex.CommandText = """
         CREATE INDEX IF NOT EXISTS idx_node_images_node_id
@@ -114,13 +123,10 @@ public sealed class NodeImageStore
     {
         return RunSerializedAsync(() =>
         {
-            using var con = new SqliteConnection(_connectionString);
-            con.Open();
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-            ApplyPragmas(con);
-            using var tr = con.BeginTransaction();
-
-            using var cmd = con.CreateCommand();
+            using var cmd = _connection.CreateCommand();
             cmd.Transaction = tr;
             cmd.CommandText = """
             SELECT
@@ -156,13 +162,10 @@ public sealed class NodeImageStore
     {
         return RunSerializedAsync(() =>
         {
-            using var con = new SqliteConnection(_connectionString);
-            con.Open();
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-            ApplyPragmas(con);
-            using var tr = con.BeginTransaction();
-
-            using var cmd = con.CreateCommand();
+            using var cmd = _connection.CreateCommand();
             cmd.Transaction = tr;
             cmd.CommandText = """
             SELECT id, file_name, mime_type, length(image_data) AS size, created_utc
@@ -196,13 +199,10 @@ public sealed class NodeImageStore
     {
         return RunSerializedAsync(() =>
         {
-            using var con = new SqliteConnection(_connectionString);
-            con.Open();
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-            ApplyPragmas(con);
-            using var tr = con.BeginTransaction();
-
-            using var cmd = con.CreateCommand();
+            using var cmd = _connection.CreateCommand();
             cmd.Transaction = tr;
             cmd.CommandText = """
             INSERT INTO node_images(node_id, file_name, mime_type, image_data)
@@ -226,13 +226,10 @@ public sealed class NodeImageStore
     {
         return RunSerializedAsync(() =>
         {
-            using var con = new SqliteConnection(_connectionString);
-            con.Open();
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-            ApplyPragmas(con);
-            using var tr = con.BeginTransaction();
-
-            using var cmd = con.CreateCommand();
+            using var cmd = _connection.CreateCommand();
             cmd.Transaction = tr;
             cmd.CommandText = """
             SELECT id, node_id, file_name, mime_type, image_data
@@ -267,13 +264,10 @@ public sealed class NodeImageStore
     {
         return RunSerializedAsync(() =>
         {
-            using var con = new SqliteConnection(_connectionString);
-            con.Open();
+            ThrowIfDisposed();
+            using var tr = _connection.BeginTransaction();
 
-            ApplyPragmas(con);
-            using var tr = con.BeginTransaction();
-
-            using var cmd = con.CreateCommand();
+            using var cmd = _connection.CreateCommand();
             cmd.Transaction = tr;
             cmd.CommandText = "DELETE FROM node_images WHERE id = $id;";
             cmd.Parameters.AddWithValue("$id", id);
@@ -283,6 +277,20 @@ public sealed class NodeImageStore
             tr.Commit();
             return affected > 0;
         });
+    }
+
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _connection.Dispose();
+            _disposed = true;
+        }
     }
 }
 
