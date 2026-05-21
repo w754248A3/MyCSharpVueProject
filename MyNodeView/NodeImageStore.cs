@@ -10,8 +10,16 @@ public sealed class NodeImageStore : IDisposable
     private readonly object _lock = new();
     private bool _disposed;
 
+    static int s_newCount =0;
+
     public NodeImageStore()
     {
+        
+        if(Interlocked.Exchange(ref s_newCount, 1)!=0){
+            throw new InvalidOperationException("类只能有一个实例");
+        }
+
+
         var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeImages.db");
         _connectionString = new SqliteConnectionStringBuilder
         {

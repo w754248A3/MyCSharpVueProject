@@ -30,10 +30,15 @@ public sealed class MyAsyncRunSql{
 
 public sealed class MyNodeDataStore{
 
+    static int s_newCount =0;
 
     readonly DataConnection _con;
     readonly MyAsyncRunSql _run= new();
     public MyNodeDataStore(){
+
+        if(Interlocked.Exchange(ref s_newCount, 1)!=0){
+            throw new InvalidOperationException("类只能有一个实例");
+        }
 
         _con = InitData();
     }
