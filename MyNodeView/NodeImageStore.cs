@@ -10,8 +10,9 @@ public sealed class NodeImageStore : IDisposable
     private readonly object _lock = new();
     private bool _disposed;
 
-    public NodeImageStore(string dbPath)
+    public NodeImageStore()
     {
+        var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeImages.db");
         _connectionString = new SqliteConnectionStringBuilder
         {
             Mode = SqliteOpenMode.ReadWriteCreate,
@@ -20,7 +21,7 @@ public sealed class NodeImageStore : IDisposable
         }.ToString();
 
         _connection = new SqliteConnection(_connectionString);
-        InitializeAsync().GetAwaiter().GetResult();
+        Initialize();
     }
 
     private Task<T> RunSerializedAsync<T>(Func<T> func)
@@ -112,11 +113,6 @@ public sealed class NodeImageStore : IDisposable
         createIndex.ExecuteNonQuery();
 
         tr.Commit();
-    }
-
-    private Task InitializeAsync()
-    {
-        return RunSerializedAsync(Initialize);
     }
 
     public Task<NodeImageSummary> GetSummaryAsync(int nodeId)

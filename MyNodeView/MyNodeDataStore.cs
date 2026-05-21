@@ -31,23 +31,16 @@ public sealed class MyAsyncRunSql{
 public sealed class MyNodeDataStore{
 
 
-    DataConnection _con;
+    readonly DataConnection _con;
     readonly MyAsyncRunSql _run= new();
-    private MyNodeDataStore(){
+    public MyNodeDataStore(){
 
+        _con = InitData();
     }
 
-    public static Task<MyNodeDataStore> Create(){
-        var obj = new MyNodeDataStore();
+   static DataConnection InitData(){
 
-        return obj._run.Run(()=> {
-            obj.InitData();
-            return obj;
-        
-        });
-    }
-
-    void InitData(){
+        var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Xb1r83sB.db");
 
         static void RegisterCustomTokenizer(DataConnection db){
             if (db.Connection is not SqliteConnection con)
@@ -68,7 +61,7 @@ public sealed class MyNodeDataStore{
 
             Cache = SqliteCacheMode.Shared,
 
-            DataSource="Xb1r83sB.db"
+            DataSource=dbPath
 
 
 
@@ -112,7 +105,7 @@ public sealed class MyNodeDataStore{
         )
         """);
 
-        _con=db;
+        return db;
       
     }
 

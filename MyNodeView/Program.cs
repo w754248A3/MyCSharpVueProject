@@ -26,6 +26,10 @@ public class Program
         builder.Services.AddSingleton<App>();
         builder.Services.AddSingleton<MainWindow>();
 
+        builder.Services.AddSingleton<MyNodeDataStore>();
+        builder.Services.AddSingleton<NodeImageStore>();
+
+
         // 3. 构建应用
         var app = builder.Build();
 
@@ -40,10 +44,15 @@ public class Program
         var wpfApp = app.Services.GetRequiredService<App>();
         var mainWindow = app.Services.GetRequiredService<MainWindow>();
         
+        //var nodeDataStore = app.Services.GetRequiredService<MyNodeDataStore>();
+
+        //var imgStore = app.Services.GetRequiredService<NodeImageStore>();
+
         // 运行 WPF 消息循环 (这行代码会阻塞，直到关闭 WPF 窗口)
         wpfApp.Run(mainWindow);
 
         // 6. WPF 窗口关闭后，优雅地停止 Web API
         app.StopAsync().Wait();
+        
     }
 }

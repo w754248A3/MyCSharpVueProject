@@ -8,18 +8,12 @@ namespace MyNodeView;
 
 public partial class MainWindow
 {
-    private NodeImageStore? _imageStore;
+    private readonly NodeImageStore _imageStore;
     private string? _webRootPath;
     private static readonly JsonSerializerOptions ApiJsonSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
-
-    private void InitImageStore()
-    {
-        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeImages.db");
-        _imageStore = new NodeImageStore(dbPath);
-    }
 
     private void RegisterWebResourceRoutes(string rootPath)
     {
@@ -81,24 +75,6 @@ public partial class MainWindow
             else if(IsImageApiRequest(e.Request.Uri)){
                 e.Response =await HandleImageApiRequestAsync(e.Request);
             }
-            else if (IsClipboardHistoryApiRequest(e.Request.Uri)){
-                
-                if (!string.Equals(e.Request.Method, "GET", StringComparison.OrdinalIgnoreCase))
-                {
-                    e.Response =webView2.CoreWebView2.Environment.CreateWebResourceResponse(Stream.Null, 405, "Method Not Allowed", BuildStaticHeaders("text/plain; charset=utf-8"));
-                
-                    return;
-                }
-
-                var jsonStr = GetClipboardListJson();
-
-                var by = Encoding.UTF8.GetBytes(jsonStr);
-
-                var resms = new MemoryStream(by);
-               
-                var response = webView2.CoreWebView2.Environment.CreateWebResourceResponse(resms, 200, "OK", BuildStaticHeaders("application/json", by.Length));
-                e.Response = response;
-            }
             else{
 #if DEBUG   
                 e.Response =await HandleDebugStaticFileRequest(e.Request);
@@ -125,11 +101,6 @@ public partial class MainWindow
     }
 
     
-    private bool IsClipboardHistoryApiRequest(string requestUri)
-    {
-        return requestUri.StartsWith("https://mypage.test/api/clipboardhistory", StringComparison.OrdinalIgnoreCase);
-    }
-
     private bool IsDataApiRequest(string requestUri)
     {
         return requestUri.StartsWith("https://mypage.test/api/data", StringComparison.OrdinalIgnoreCase);
