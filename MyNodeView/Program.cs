@@ -12,7 +12,7 @@ namespace MyNodeView;
 
 public class Program
 {
-    private const string AppUrl = "http://localhost:8080";
+    public const string AppUrl = "http://localhost:34114";
 
     // WPF 需要单线程单元 (STA) 才能运行。
     [STAThread]

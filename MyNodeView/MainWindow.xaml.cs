@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -12,7 +13,7 @@ namespace MyNodeView;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private const string AppHomeUrl = "http://localhost:8080/";
+    
     private string _webApiMessage = "";
 
     public MainWindow()
@@ -75,7 +76,13 @@ public partial class MainWindow : Window
 
         // WebView2 不再拦截自定义域名，也不再代理 Vite 静态资源；它和普通浏览器一样访问本地 HTTP 服务。
         await webView2.EnsureCoreWebView2Async(environment);
-        webView2.CoreWebView2.Navigate(AppHomeUrl);
+
+#if DEBUG
+     webView2.CoreWebView2.Navigate("http://localhost:5173/");
+#else
+     webView2.CoreWebView2.Navigate(Program.AppUrl);
+#endif
+       
     }
 
     private static string GetUserDataPath()

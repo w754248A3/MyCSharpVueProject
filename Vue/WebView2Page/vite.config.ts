@@ -21,7 +21,7 @@ export default defineConfig({
     proxy: {
       // 开发时由 Vite 提供热重载页面，动态数据接口转发到 C# ASP.NET Core Web API。
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:34114',
         changeOrigin: true,
       },
     },
