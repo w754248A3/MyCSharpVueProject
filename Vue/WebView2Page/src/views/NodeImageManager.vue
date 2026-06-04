@@ -87,11 +87,11 @@ const imageListRequestSeq = ref(0);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const largePreviewUrl = ref("");
 
-const getImageUrl = (id: number) => `https://mypage.test/api/images/content?id=${id}`;
+const getImageUrl = (id: number) => `/api/images/content?id=${id}`;
 
 const loadImageSummary = async (nodeId: number) => {
   try {
-    const rsp = await fetch(`https://mypage.test/api/images/meta?nodeId=${nodeId}`);
+    const rsp = await fetch(`/api/images/meta?nodeId=${nodeId}`);
     if (!rsp.ok) {
       throw new Error("加载图片摘要失败");
     }
@@ -107,7 +107,7 @@ const loadImageList = async () => {
   const requestSeq = ++imageListRequestSeq.value;
   isImageLoading.value = true;
   try {
-    const rsp = await fetch(`https://mypage.test/api/images/list?nodeId=${requestNodeId}`);
+    const rsp = await fetch(`/api/images/list?nodeId=${requestNodeId}`);
     if (!rsp.ok) {
       throw new Error("加载图片列表失败");
     }
@@ -143,7 +143,7 @@ const onPickFile = async (event: Event) => {
 
   try {
     const bytes = await file.arrayBuffer();
-    const rsp = await fetch(`https://mypage.test/api/images/upload?nodeId=${props.nodeId}`, {
+    const rsp = await fetch(`/api/images/upload?nodeId=${props.nodeId}`, {
       method: "POST",
       headers: {
         "Content-Type": file.type || "application/octet-stream",
@@ -172,7 +172,7 @@ const deleteImage = async (id: number) => {
   }
 
   try {
-    const rsp = await fetch(`https://mypage.test/api/images/delete?id=${id}`, { method: "DELETE" });
+    const rsp = await fetch(`/api/images/delete?id=${id}`, { method: "DELETE" });
     if (!rsp.ok) {
       throw new Error("删除失败");
     }
