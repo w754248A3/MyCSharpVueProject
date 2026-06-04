@@ -127,7 +127,7 @@ public sealed class NodeDataApiService
         {
             return new List<NodeSearchResult>();
         }
-        catch (SqlException)
+        catch (LinqToDB.SqlQuery.SqlException)
         {
             return new List<NodeSearchResult>();
         }

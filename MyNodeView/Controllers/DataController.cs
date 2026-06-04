@@ -27,7 +27,7 @@ public class DataController : ControllerBase
         }
 
         // 读取原始 JSON 字符串，保持与原 RunDataReadWriteSQL 方法相同的输入格式。
-        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        using var reader = new System.IO.StreamReader(Request.Body, Encoding.UTF8);
         var requestJson = await reader.ReadToEndAsync();
         if (string.IsNullOrWhiteSpace(requestJson))
         {

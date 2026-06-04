@@ -57,7 +57,7 @@ public class Program
         var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
         var publishedDistPath = Path.Combine(baseDirectory, "dist");
         var webRootPath = Directory.Exists(sourceDistPath) ? sourceDistPath : publishedDistPath;
-
+        webRootPath = @"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist";
         if (Directory.Exists(webRootPath))
         {
             // 让 ASP.NET Core 直接提供 Vite 编译后的 JS、CSS、图片等静态资源。

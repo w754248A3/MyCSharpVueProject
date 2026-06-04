@@ -85,7 +85,7 @@ public class ImagesController : ControllerBase
 
         // 把请求体复制到内存后进行大小检查，再写入数据库。
         byte[] imageBytes;
-        await using (var memoryStream = new MemoryStream())
+        await using (var memoryStream = new System.IO.MemoryStream())
         {
             await Request.Body.CopyToAsync(memoryStream);
             imageBytes = memoryStream.ToArray();
