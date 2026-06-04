@@ -1,29 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel;
-using System.Diagnostics.Metrics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using LinqToDB;
-using LinqToDB.Data;
-using LinqToDB.DataProvider.SQLite;
-using LinqToDB.Linq;
-using LinqToDB.Mapping;
-using LinqToDB.SqlQuery;
-using Microsoft.Data.Sqlite;
 using Microsoft.Web.WebView2.Core;
 
 namespace MyNodeView;
@@ -33,218 +12,89 @@ namespace MyNodeView;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private const string AppHomeUrl = "http://localhost:8080/";
+    private string _webApiMessage = "";
 
-
-    public MainWindow(MyNodeDataStore node, NodeImageStore img)
+    public MainWindow()
     {
         InitializeComponent();
-
-        _dataStore = node;
-        _imageStore = img;
-  
-        this.Loaded+=Window_Loaded;
-        
+        Loaded += Window_Loaded;
     }
 
-    readonly MyNodeDataStore _dataStore;
-    private async void Window_Loaded(object sender, RoutedEventArgs e){
-
-        
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        // 窗口加载完成后再初始化 WebView2，避免控件尚未创建就访问 CoreWebView2。
         InitWebView2();
-
-        this.Loaded-=Window_Loaded;
-
+        Loaded -= Window_Loaded;
     }
+
     private void ReLoad_Click(object sender, RoutedEventArgs e)
     {
+        // 重新加载当前 WebView2 页面，便于调试前端界面。
         webView2.CoreWebView2.Reload();
     }
 
-    string _webapimesage="";
     private void Message_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(_webapimesage);
+        // 显示后台 Web API 写入到窗口中的测试消息。
+        MessageBox.Show(_webApiMessage);
     }
 
     public void UpdateMessage(string message)
     {
-        // 重点：Web API 运行在后台线程，WPF UI 只能在主线程更新。
-        // 所以必须使用 Dispatcher 切换回 UI 线程！
+        // Web API 运行在后台线程，WPF UI 只能在主线程更新。
         Dispatcher.Invoke(() =>
         {
-            _webapimesage = message;
+            _webApiMessage = message;
         });
     }
 
     private void Test_Click(object sender, RoutedEventArgs e)
     {
-        
-
-        
-
+        // 预留菜单入口：当前没有测试动作。
     }
-
 
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-
-
+        // 预留菜单入口：当前没有导出动作。
     }
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
-        
-        
-
-
-        var json = File.ReadAllText("json_data.json",Encoding.UTF8);
-
-        var vs = JsonSerializer.Deserialize<List<NodeData>>(json);
-
+        // 保留原有导入示例代码，便于后续继续实现数据导入功能。
+        var json = File.ReadAllText("json_data.json", Encoding.UTF8);
+        var nodes = JsonSerializer.Deserialize<List<NodeData>>(json);
     }
 
-    
+    private async void InitWebView2()
+    {
+        // 为 WebView2 指定独立用户数据目录，避免与系统浏览器配置互相影响。
+        var userDataPath = GetUserDataPath();
+        var options = new CoreWebView2EnvironmentOptions();
+        var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataPath, options: options);
 
-    async Task<string> RunDataReadWriteSQL(string jsonString){
-
-        using var jsondoc = JsonDocument.Parse(jsonString);
-
-
-        var type = jsondoc.RootElement.GetProperty("type").GetString();
-
-        var index = jsondoc.RootElement.GetProperty("index").GetInt32();
-
-        if (type == MessageType.ADDNODE)
-        {
-            var obj = jsondoc.RootElement.GetProperty("value").Deserialize<NodeData>();
-
-            var id = await _dataStore.Inset(obj);
-
-            obj.Id=id;
-
-            var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.ADDNODE, Index= index, Value=obj});
-
-            return s;
-        }
-        else if(type == MessageType.QUERY){
-
-            var id = jsondoc.RootElement.GetProperty("value").GetInt32();
-
-
-            var q = await _dataStore.QueryFunc(id);
-
-            var s = JsonSerializer.Serialize(new MessageData<QueryData>{Type= MessageType.QUERY, Index= index, Value=q});
-
-            return s;
-        }
-        else if(type == MessageType.SEARCH){
-
-            var searchText = jsondoc.RootElement.GetProperty("value").GetString();
-
-            List<NodeSearchResult> vs = new List<NodeSearchResult>();
-
-            try{
-
-                if(string.IsNullOrWhiteSpace(searchText)){
-                    var roots = await _dataStore.SearchFunc();
-                    vs = roots.Select(r => new NodeSearchResult { Item = r, Parents = new List<NodeData>() }).ToList();
-                }
-                else{
-                    vs = await _dataStore.SearchNodesWithFullPath(searchText);
-                }
-            }
-            catch(SqliteException ex){
-                vs = new List<NodeSearchResult>();
-            }
-            catch(SqlException ex){
-                vs = new List<NodeSearchResult>();
-            }
-
-               
-            var s = JsonSerializer.Serialize(new MessageData<List<NodeSearchResult>>{Type= MessageType.SEARCH, Index= index, Value=vs});
-
-            return s;
-        }
-        else if(type == MessageType.UPDATA){
-
-            var obj = jsondoc.RootElement.GetProperty("value").Deserialize<NodeData>();
-
-            obj = await _dataStore.UpData(obj);
-
-            
-            var s = JsonSerializer.Serialize(new MessageData<NodeData>{Type= MessageType.UPDATA, Index= index, Value=obj});
-
-            return s;
-        }
-        else{
-            throw new IndexOutOfRangeException("没有这个消息类型");
-        }
-
-
-    
-    }
-
-
-    public class MessageType{
-        public const string ADDNODE = "ADDNODE";
-
-        public const string QUERY = "QUERY";
-
-        public const string SEARCH = "SEARCH";
-
-
-        public const string UPDATA = "UPDATA";
-    }
-
-    async void InitWebView2(){
-
-
-        string GetUserDataPath(){
-
-
-            var s = AppDomain.CurrentDomain.BaseDirectory;
-
-
-            return System.IO.Path.Combine(s, "MyNodeView.exe.WebView2");
-        }
-
-        var info = new CoreWebView2EnvironmentOptions();
-
-        var s = GetUserDataPath();
-
-        var environment = await CoreWebView2Environment.CreateAsync(userDataFolder:s, options: info);
-
-
-
+        // WebView2 不再拦截自定义域名，也不再代理 Vite 静态资源；它和普通浏览器一样访问本地 HTTP 服务。
         await webView2.EnsureCoreWebView2Async(environment);
-        RegisterWebResourceRoutes(@"C:\Users\PC\code\MyCSharpVueProject\Vue\WebView2Page\dist");
-        webView2.CoreWebView2.Navigate("https://mypage.test/");
-      
-
-
-       
+        webView2.CoreWebView2.Navigate(AppHomeUrl);
     }
 
-
-
-
-
-
-
-
+    private static string GetUserDataPath()
+    {
+        // 用户数据目录放在程序目录下，方便定位和清理 WebView2 缓存。
+        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var userDataPath = Path.Combine(baseDirectory, "MyNodeView.exe.WebView2");
+        return userDataPath;
+    }
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        // 关闭窗口前做一次确认，避免误操作退出整个桌面应用。
         var result = MessageBox.Show("确定要退出吗？", "确认退出", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result == MessageBoxResult.No)
         {
             e.Cancel = true;
         }
-        else
-        {
-           
-        }
+
         base.OnClosing(e);
     }
-
 }

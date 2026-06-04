@@ -14,7 +14,7 @@ public class MessageController : ControllerBase
         _mainWindow = mainWindow;
     }
 
-    // GET: http://localhost:5000/api/message?text=HelloWPF
+    // GET: http://localhost:8080/api/message?text=HelloWPF
     [HttpGet]
     public IActionResult SendMessage([FromQuery] string text)
     {
