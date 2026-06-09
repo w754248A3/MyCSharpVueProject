@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Web.WebView2.Core;
 
 namespace MyNodeView;
@@ -62,6 +63,10 @@ public partial class ChildWindow : Window
         // 注册生命周期事件。
         Loaded += Window_Loaded;
         Closing += Window_Closing;
+
+        // 在窗口句柄创建后立即设置独立的 AppUserModelID，
+        // 使子窗口在任务栏上拥有独立按钮，不与主窗口合并。
+        SourceInitialized += Window_SourceInitialized;
     }
 
     // ==================== 属性 ====================
@@ -73,6 +78,23 @@ public partial class ChildWindow : Window
     public string WindowKey => _descriptor.Key;
 
     // ==================== 窗口生命周期 ====================
+
+    /// <summary>
+    /// 窗口句柄创建后立即设置独立的 AppUserModelID，
+    /// 使子窗口在任务栏上不被合并到主窗口图标下。
+    /// SourceInitialized 是 WPF 中窗口句柄可用的最早时机。
+    /// </summary>
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        // 通过 WindowInteropHelper 获取 WPF 窗口的底层 HWND。
+        var windowHandle = new WindowInteropHelper(this).Handle;
+
+        // 生成该窗口类型专属的 AppUserModelID。
+        var appUserModelId = BuildAppUserModelId();
+
+        // 调用 Shell API 为窗口设置独立的 AppUserModelID。
+        TaskbarAppUserModelId.SetForWindow(windowHandle, appUserModelId);
+    }
 
     /// <summary>
     /// 窗口加载完成后初始化 WebView2。
@@ -166,6 +188,19 @@ public partial class ChildWindow : Window
 
         // 更新或添加该 Key 对应窗口的尺寸记录。
         _appConfig.ChildWindowSizes[windowKey] = currentSize;
+    }
+
+    // ==================== AppUserModelID 生成 ====================
+
+    /// <summary>
+    /// 为该窗口生成唯一的 AppUserModelID。
+    /// 格式为 "MyNodeView.{WindowKey}"，
+    /// 不同 Key 的窗口拥有不同的 ID，在任务栏上独立显示。
+    /// </summary>
+    private string BuildAppUserModelId()
+    {
+        var appUserModelId = "MyNodeView." + _descriptor.Key;
+        return appUserModelId;
     }
 
     // ==================== URL 构建 ====================

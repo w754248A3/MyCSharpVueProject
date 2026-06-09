@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Web.WebView2.Core;
 
 namespace MyNodeView;
@@ -57,9 +58,27 @@ public partial class MainWindow : Window
         InitializeComponent();
         Loaded += Window_Loaded;
         Closing += Window_Closing;
+
+        // 在窗口句柄创建后设置主窗口的 AppUserModelID，
+        // 确保与子窗口的 ID 不同，任务栏上各自独立。
+        SourceInitialized += Window_SourceInitialized;
     }
 
     // ==================== 窗口生命周期 ====================
+
+    /// <summary>
+    /// 窗口句柄创建后立即为主窗口设置专属的 AppUserModelID。
+    /// 与子窗口使用不同的 ID，确保任务栏上各自拥有独立按钮。
+    /// </summary>
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        // 通过 WindowInteropHelper 获取 WPF 窗口的底层 HWND。
+        var windowInteropHelper = new WindowInteropHelper(this);
+        var windowHandle = windowInteropHelper.Handle;
+
+        // 主窗口使用固定的 AppUserModelID。
+        TaskbarAppUserModelId.SetForWindow(windowHandle, "MyNodeView.MainWindow");
+    }
 
     /// <summary>
     /// 窗口加载完成后再初始化 WebView2，避免控件尚未创建就访问 CoreWebView2。
