@@ -66,6 +66,9 @@ public class Program
         builder.Services.AddSingleton<NodeImageStore>();
         builder.Services.AddSingleton<NodeDataApiService>();
 
+        // 注册 WebView2 环境共享服务，主窗口与子窗口共享浏览器进程。
+        builder.Services.AddSingleton<WebView2EnvironmentService>();
+
         // 将配置实例注册到 DI 容器，供 MainWindow 等组件通过构造函数注入。
         builder.Services.AddSingleton(appConfig);
 
@@ -75,6 +78,9 @@ public class Program
 
         // 使用配置中的静态文件路径来提供 Vue 前端页面。
         MapVueStaticFiles(app, appConfig.StaticFilesPath);
+
+        // 映射 /SingleFilePage/ 路径的静态文件（或错误回退）。
+        MapSingleFilePage(app, appConfig.SingleFilePagePath);
 
         // ---------- 步骤 5：启动 Web 服务与 WPF 窗口 ----------
         // 在后台启动 Web 服务，主线程继续运行 WPF 消息循环。
@@ -134,6 +140,58 @@ public class Program
         {
             await WriteVueFallbackAsync(context, webRootPath);
         });
+    }
+
+    // ==================== /SingleFilePage/ 静态文件映射 ====================
+
+    /// <summary>
+    /// 将 /SingleFilePage/ 路径映射到配置中指定的本地目录。
+    /// 如果 SingleFilePagePath 为空或目录不存在，
+    /// 则对该路径的所有请求返回配置未设置的错误信息。
+    /// </summary>
+    private static void MapSingleFilePage(WebApplication app, string singleFilePagePath)
+    {
+        var isPathConfigured = !string.IsNullOrWhiteSpace(singleFilePagePath);
+        var isDirectoryExists = isPathConfigured && Directory.Exists(singleFilePagePath);
+
+        if (isDirectoryExists)
+        {
+            // 路径已配置且目录存在：注册静态文件中间件。
+            var fileProvider = new PhysicalFileProvider(singleFilePagePath);
+
+            var staticFileOptions = new StaticFileOptions
+            {
+                FileProvider = fileProvider,
+                RequestPath = "/SingleFilePage"
+            };
+
+            // 使用 UseStaticFiles 注册，让 /SingleFilePage/* 映射到本地目录。
+            app.UseStaticFiles(staticFileOptions);
+        }
+        else
+        {
+            // 路径未配置或目录不存在：任何 /SingleFilePage/* 请求返回错误。
+            app.Map("/SingleFilePage", singleFilePageBranch =>
+            {
+                singleFilePageBranch.Run(SingleFilePageNotConfiguredHandler);
+            });
+        }
+    }
+
+    /// <summary>
+    /// /SingleFilePage/ 未配置时的回退处理。
+    /// 对所有 /SingleFilePage/* 请求返回 503 状态码和说明文字。
+    /// </summary>
+    private static async Task SingleFilePageNotConfiguredHandler(HttpContext context)
+    {
+        // 返回 HTTP 503，提示用户在配置文件中设置 SingleFilePagePath。
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        context.Response.ContentType = "text/plain; charset=utf-8";
+
+        var errorMessage = "SingleFilePage 路径未配置。\n"
+            + "请在 appsettings.json 中设置 singleFilePagePath 为本地目录路径。";
+
+        await context.Response.WriteAsync(errorMessage);
     }
 
     // ==================== Vue 页面回退 ====================
