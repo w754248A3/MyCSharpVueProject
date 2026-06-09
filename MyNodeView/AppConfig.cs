@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -38,6 +39,12 @@ public class AppConfig
     public string StaticFilesPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// /SingleFilePage/ 路径下静态文件的本地目录。
+    /// 为空字符串时，访问该路径会返回配置未设置的错误信息。
+    /// </summary>
+    public string SingleFilePagePath { get; set; } = string.Empty;
+
+    /// <summary>
     /// 主窗口的宽度（像素）。
     /// </summary>
     public double WindowWidth { get; set; } = DefaultWindowWidth;
@@ -46,6 +53,13 @@ public class AppConfig
     /// 主窗口的高度（像素）。
     /// </summary>
     public double WindowHeight { get; set; } = DefaultWindowHeight;
+
+    /// <summary>
+    /// 各个子窗口的尺寸配置，以窗口 Key 为索引。
+    /// Key 由 ChildWindowDescriptor 定义，每个 Key 对应一种子窗口类型。
+    /// 程序退出时自动保存，下次启动时恢复对应窗口的大小。
+    /// </summary>
+    public Dictionary<string, WindowSize> ChildWindowSizes { get; set; } = new();
 
     // ==================== JSON 序列化选项 ====================
 
@@ -126,4 +140,22 @@ public class AppConfig
         var configFilePath = Path.Combine(baseDirectory, "appsettings.json");
         return configFilePath;
     }
+}
+
+// ==================== 配置子类型 ====================
+
+/// <summary>
+/// 窗口尺寸配置，用于存储主窗口或子窗口的宽高。
+/// </summary>
+public class WindowSize
+{
+    /// <summary>
+    /// 窗口宽度（像素），默认 600。
+    /// </summary>
+    public double Width { get; set; } = 600;
+
+    /// <summary>
+    /// 窗口高度（像素），默认 400。
+    /// </summary>
+    public double Height { get; set; } = 400;
 }
