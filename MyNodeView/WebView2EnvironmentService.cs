@@ -10,6 +10,11 @@ namespace MyNodeView;
 /// 确保主窗口和所有子窗口共用同一个 CoreWebView2Environment 实例，
 /// 从而共享底层浏览器进程和用户数据目录，减少内存占用。
 ///
+/// 无痕浏览模式：
+/// 通过 CoreWebView2EnvironmentOptions 的 AdditionalBrowserArguments
+/// 传入 --incognito 标志，使所有 WebView2 窗口以类似 Chrome 无痕模式的方式运行。
+/// 浏览数据（Cookie、缓存、历史记录等）在窗口关闭后不会保留到磁盘。
+///
 /// 此服务注册为 DI 单例，由 Program.Main 在启动时创建。
 /// </summary>
 public class WebView2EnvironmentService
@@ -56,7 +61,13 @@ public class WebView2EnvironmentService
 
         // 首次调用：创建 CoreWebView2Environment 并缓存。
         // 此操作会启动 WebView2 浏览器进程（如果尚未运行）。
-        var options = new CoreWebView2EnvironmentOptions();
+        //
+        // --incognito 标志使浏览器以无痕模式运行，
+        // 不会将浏览数据（cookie、缓存、localStorage 等）持久化到磁盘。
+        var options = new CoreWebView2EnvironmentOptions
+        {
+            AdditionalBrowserArguments = "--incognito"
+        };
 
         _cachedEnvironment = await CoreWebView2Environment.CreateAsync(
             userDataFolder: UserDataFolder,

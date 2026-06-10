@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -128,7 +129,9 @@ public class Program
 
             var staticFileOptions = new StaticFileOptions
             {
-                FileProvider = fileProvider
+                FileProvider = fileProvider,
+                // 禁用静态文件缓存：每次请求都返回最新内容，不缓存到浏览器。
+                OnPrepareResponse = DisableCacheResponse
             };
 
             app.UseDefaultFiles(defaultFilesOptions);
@@ -162,7 +165,9 @@ public class Program
             var staticFileOptions = new StaticFileOptions
             {
                 FileProvider = fileProvider,
-                RequestPath = "/SingleFilePage"
+                RequestPath = "/SingleFilePage",
+                // 禁用静态文件缓存：每次请求都返回最新内容，不缓存到浏览器。
+                OnPrepareResponse = DisableCacheResponse
             };
 
             // 使用 UseStaticFiles 注册，让 /SingleFilePage/* 映射到本地目录。
@@ -219,6 +224,10 @@ public class Program
         if (File.Exists(indexPath))
         {
             context.Response.ContentType = "text/html; charset=utf-8";
+
+            // 告知浏览器不要缓存 index.html，确保前端更新能即时反映。
+            DisableCacheResponseOnHttpContext(context);
+
             await context.Response.SendFileAsync(indexPath);
             return;
         }
@@ -226,7 +235,48 @@ public class Program
         // 没有编译前端时给出操作提示，避免用户看到空白页面。
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
         context.Response.ContentType = "text/plain; charset=utf-8";
+
+        // 错误提示页面也不应被缓存。
+        DisableCacheResponseOnHttpContext(context);
+
         await context.Response.WriteAsync(
             "Vue dist not found. Please run npm run build in Vue/WebView2Page first.");
     }
+
+    // ==================== 缓存控制 ====================
+
+    /// <summary>
+    /// 作为 StaticFileOptions.OnPrepareResponse 的回调，
+    /// 为每个静态文件响应设置禁止缓存的 HTTP 头。
+    ///
+    /// Cache-Control: no-cache, no-store, must-revalidate
+    ///   告诉浏览器和中间代理不得缓存此响应。
+    /// Pragma: no-cache
+    ///   兼容 HTTP/1.0 旧客户端。
+    /// Expires: 0
+    ///   兼容旧浏览器，表示内容已过期。
+    /// </summary>
+    private static void DisableCacheResponse(StaticFileResponseContext context)
+    {
+        DisableCacheResponseOnHttpContext(context.Context);
+    }
+
+    /// <summary>
+    /// 直接在 HttpContext 上设置禁用缓存的响应头。
+    /// 用于非 StaticFileMiddleware 路径（如 fallback index.html）。
+    /// </summary>
+    private static void DisableCacheResponseOnHttpContext(HttpContext context)
+    {
+        var response = context.Response;
+
+        // 禁止一切形式的缓存。
+        response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+
+        // HTTP/1.0 兼容。
+        response.Headers["Pragma"] = "no-cache";
+
+        // 设置为 Unix 纪元，表示内容已立即过期。
+        response.Headers["Expires"] = "0";
+    }
+
 }
