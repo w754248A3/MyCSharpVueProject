@@ -25,10 +25,10 @@ public partial class MainWindow : Window
     /// </summary>
     private static readonly ChildWindowDescriptor SingleFilePageDescriptor = new()
     {
-        Key = "SingleFilePage",
-        Title = "单文件页面",
-        UrlPath = "/SingleFilePage/",
-        Topmost = false,
+        Key = "A_U74WAsUd",
+        Title = "A",
+        UrlPath = "/SingleFilePage/index.html",
+        Topmost = true,
         DefaultWidth = 600,
         DefaultHeight = 400
     };
