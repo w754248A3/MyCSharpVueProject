@@ -1,5 +1,4 @@
 using System.Text.Json;
-using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
 
 namespace MyNodeView;
@@ -124,10 +123,6 @@ public sealed class NodeDataApiService
             return results;
         }
         catch (SqliteException)
-        {
-            return new List<NodeSearchResult>();
-        }
-        catch (LinqToDB.SqlQuery.SqlException)
         {
             return new List<NodeSearchResult>();
         }
