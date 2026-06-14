@@ -292,6 +292,7 @@ public sealed class MyNodeDataStore : IDisposable
 
     QueryData QueryFunc2(int id)
     {
+        // 步骤 1：获取已编译命令并绑定参数（事务开启前）。
         var rootCmd = GetPreparedCommand(
             "SELECT id, parent_id, text FROM nodesTable WHERE id = @id;");
         rootCmd.Parameters.AddWithValue("@id", id);
@@ -300,12 +301,21 @@ public sealed class MyNodeDataStore : IDisposable
             "SELECT id, parent_id, text FROM nodesTable WHERE parent_id = @parent_id;");
         childCmd.Parameters.AddWithValue("@parent_id", id);
 
+        // 步骤 2：开启事务。
+        using var tr = _con.BeginTransaction();
+
+        // 步骤 3：将缓存的命令关联到当前事务，然后执行查询。
+        rootCmd.Transaction = tr;
+        childCmd.Transaction = tr;
+
         using var rootReader = rootCmd.ExecuteReader();
         var hasRoot = rootReader.Read();
         var root = hasRoot ? ReadNodeData(rootReader) : new NodeData();
 
         using var childReader = childCmd.ExecuteReader();
         var children = ReadNodeDataList(childReader);
+
+        tr.Commit();
 
         return new QueryData { Root = root, Child = children };
     }
@@ -319,6 +329,7 @@ public sealed class MyNodeDataStore : IDisposable
 
     List<NodeData> SearchFunc2(string searchText)
     {
+        // 步骤 1：获取已编译命令并绑定参数（事务开启前）。
         var searchCmd = GetPreparedCommand("""
             SELECT n.id, n.parent_id, n.text
             FROM textSearchTable t
@@ -328,8 +339,16 @@ public sealed class MyNodeDataStore : IDisposable
             """);
         searchCmd.Parameters.AddWithValue("@searchText", searchText);
 
+        // 步骤 2：开启事务。
+        using var tr = _con.BeginTransaction();
+
+        // 步骤 3：将缓存的命令关联到当前事务，然后执行查询。
+        searchCmd.Transaction = tr;
+
         using var reader = searchCmd.ExecuteReader();
         var results = ReadNodeDataList(reader);
+
+        tr.Commit();
 
         return results;
     }
@@ -381,8 +400,14 @@ public sealed class MyNodeDataStore : IDisposable
             cmd.Parameters.AddWithValue("@keyword", searchKeyword);
             cmd.Parameters.AddWithValue("@limit", maxResults);
 
+            // 开启事务，将缓存的命令关联到当前事务后执行查询。
+            using var tr = _con.BeginTransaction();
+            cmd.Transaction = tr;
+
             using var reader = cmd.ExecuteReader();
             var allRecords = ReadAncestorRecords(reader);
+
+            tr.Commit();
 
             if (allRecords.Count == 0)
             {
@@ -429,6 +454,7 @@ public sealed class MyNodeDataStore : IDisposable
 
     List<NodeData> SearchFunc2()
     {
+        // 步骤 1：获取已编译命令（无参数绑定，事务开启前）。
         var cmd = GetPreparedCommand("""
             SELECT id, parent_id, text
             FROM nodesTable
@@ -437,8 +463,16 @@ public sealed class MyNodeDataStore : IDisposable
             LIMIT 100
             """);
 
+        // 步骤 2：开启事务。
+        using var tr = _con.BeginTransaction();
+
+        // 步骤 3：将缓存的命令关联到当前事务，然后执行查询。
+        cmd.Transaction = tr;
+
         using var reader = cmd.ExecuteReader();
         var results = ReadNodeDataList(reader);
+
+        tr.Commit();
 
         return results;
     }
