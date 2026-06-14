@@ -4,71 +4,133 @@ using System.Text.Json.Serialization;
 
 namespace MyNodeView;
 
+// ==================== 数据库访问序列化器 ====================
 
-public sealed class MyAsyncRunSql{
+/// <summary>
+/// 通过排他锁将数据库操作序列化到单一线程，
+/// 确保同一时刻只有一个数据库操作在执行。
+/// </summary>
+public sealed class MyAsyncRunSql
+{
+    readonly object _lock = new();
 
-    readonly object _lock =new();
-    public Task<T> Run<T>(Func<T> func){
-
-        return Task.Run(()=>{
-            lock(_lock){
+    public Task<T> Run<T>(Func<T> func)
+    {
+        return Task.Run(() =>
+        {
+            lock (_lock)
+            {
                 return func();
             }
         });
     }
 }
 
+// ==================== 数据存储 ====================
 
-public sealed class MyNodeDataStore{
-
-    static int s_newCount =0;
+public sealed class MyNodeDataStore : IDisposable
+{
+    static int s_newCount = 0;
 
     readonly SqliteConnection _con;
-    readonly MyAsyncRunSql _run= new();
+    readonly MyAsyncRunSql _run = new();
 
-    public MyNodeDataStore(){
+    // SQL 命令缓存。键为 SQL 文本，值为已编译（Prepare）的命令。
+    // Prepare() 仅在首次创建时调用一次，后续复用已编译的命令。
+    // 每次使用前清除参数，由调用方重新绑定。
+    private readonly Dictionary<string, SqliteCommand> _commandCache = new();
 
-        if(Interlocked.Exchange(ref s_newCount, 1)!=0){
+    // ==================== 构造函数 ====================
+
+    public MyNodeDataStore()
+    {
+        if (Interlocked.Exchange(ref s_newCount, 1) != 0)
+        {
             throw new InvalidOperationException("类只能有一个实例");
         }
 
         _con = InitData();
     }
 
-   static SqliteConnection InitData(){
+    // ==================== 一次性 SQL 便捷方法 ====================
 
+    /// <summary>
+    /// 执行不需要参数的一次性非查询 SQL（如 PRAGMA、CREATE TABLE 等建表语句）。
+    /// 每次调用创建新命令，执行后立即释放。
+    /// </summary>
+    private void ExecuteNonQueryOnce(string sql)
+    {
+        using var cmd = _con.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// 执行不需要参数的一次性 SQL 并返回标量值。
+    /// 每次调用创建新命令，执行后立即释放。
+    /// </summary>
+    private T ExecuteScalarOnce<T>(string sql)
+    {
+        using var cmd = _con.CreateCommand();
+        cmd.CommandText = sql;
+        return (T)cmd.ExecuteScalar()!;
+    }
+
+    // ==================== 命令缓存与编译 ====================
+
+    /// <summary>
+    /// 获取指定 SQL 对应的已编译命令。
+    /// 首次调用时创建命令、设置 SQL、调用 Prepare() 编译，并加入缓存。
+    /// 后续调用直接复用缓存的命令，只清除参数不重新编译。
+    /// 调用方拿到命令后绑定参数，然后开启事务并执行。
+    /// </summary>
+    private SqliteCommand GetPreparedCommand(string sql)
+    {
+        var isCached = _commandCache.TryGetValue(sql, out var cachedCommand);
+
+        if (!isCached)
+        {
+            cachedCommand = _con.CreateCommand();
+            cachedCommand.CommandText = sql;
+            cachedCommand.Prepare();
+            _commandCache[sql] = cachedCommand;
+        }
+
+        cachedCommand!.Parameters.Clear();
+        return cachedCommand;
+    }
+
+    // ==================== 数据库初始化 ====================
+
+    static SqliteConnection InitData()
+    {
         var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Xb1r83sB.db");
 
-        // 使用 SqliteConnectionStringBuilder 构造连接字符串。
         var connectionString = new SqliteConnectionStringBuilder()
         {
             Mode = SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Shared,
-            DataSource=dbPath
+            DataSource = dbPath
         }.ToString();
 
-        // 创建并打开单一数据库连接。
         var con = new SqliteConnection(connectionString);
         con.Open();
 
-        // 注册自定义分词器，用于 FTS5 全文搜索。
         SqliteEx.MySqliteTokenizer.RegisterCustomTokenizer(con, "mytokenizer");
 
-        // 使用显式 SQL 命令执行初始化和建表。
+        // 建表和初始化 SQL 只在启动时执行一次，直接使用普通命令。
         using var cmd = con.CreateCommand();
 
-        // 启用外键约束。
         cmd.CommandText = "PRAGMA foreign_keys = ON;";
         cmd.ExecuteNonQuery();
 
-        // 验证外键约束是否已启用。
         cmd.CommandText = "PRAGMA foreign_keys;";
         var foreignKeysEnabled = (long)cmd.ExecuteScalar()!;
-        if(foreignKeysEnabled != 1){
+        if (foreignKeysEnabled != 1)
+        {
             throw new InvalidOperationException("数据库不支持外键约束");
         }
 
-        // 创建节点表。
         cmd.CommandText = """
         CREATE TABLE IF NOT EXISTS nodesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,13 +141,11 @@ public sealed class MyNodeDataStore{
         """;
         cmd.ExecuteNonQuery();
 
-        // 创建 parent_id 索引，加速子节点查询。
         cmd.CommandText = """
         CREATE INDEX IF NOT EXISTS idx_nodes_parent ON nodesTable(parent_id);
         """;
         cmd.ExecuteNonQuery();
 
-        // 创建 FTS5 全文搜索虚拟表。
         cmd.CommandText = """
         CREATE VIRTUAL TABLE IF NOT EXISTS  textSearchTable USING fts5(
         Value,
@@ -155,108 +215,117 @@ public sealed class MyNodeDataStore{
 
     // ==================== 数据操作方法 ====================
 
-    int Inset2(NodeData data){
-        // 在事务中同时插入节点表和全文搜索表，保证数据一致性。
-        using var tr = _con.BeginTransaction();
-
-        // 插入节点表。
-        using var insertCmd = _con.CreateCommand();
-        insertCmd.CommandText = "INSERT INTO nodesTable (parent_id, text) VALUES (@parent_id, @text);";
+    int Inset2(NodeData data)
+    {
+        // 步骤 1：获取已编译命令并绑定参数（事务开启前）。
+        var insertCmd = GetPreparedCommand(
+            "INSERT INTO nodesTable (parent_id, text) VALUES (@parent_id, @text);");
         insertCmd.Parameters.AddWithValue("@parent_id", (object?)data.Parent_Id ?? DBNull.Value);
         insertCmd.Parameters.AddWithValue("@text", data.Text);
+
+        var lastIdCmd = GetPreparedCommand("SELECT last_insert_rowid();");
+
+        var insertFtsCmd = GetPreparedCommand(
+            "INSERT INTO textSearchTable (rowid, Value) VALUES (@rowid, @value);");
+        insertFtsCmd.Parameters.AddWithValue("@rowid", 0);
+        insertFtsCmd.Parameters.AddWithValue("@value", data.Text);
+
+        // 步骤 2：开启事务。
+        using var tr = _con.BeginTransaction();
+
+        // 步骤 3：将缓存的命令关联到当前事务，然后在事务内执行。
+        // 缓存的命令创建于事务开启前，其 Transaction 属性需要在事务开启后显式设置。
+        insertCmd.Transaction = tr;
+        lastIdCmd.Transaction = tr;
+        insertFtsCmd.Transaction = tr;
+
         insertCmd.ExecuteNonQuery();
 
-        // 获取自增主键的值。
-        insertCmd.CommandText = "SELECT last_insert_rowid();";
-        var newId = (long)insertCmd.ExecuteScalar()!;
+        var newId = (long)lastIdCmd.ExecuteScalar()!;
         var id = (int)newId;
 
-        // 插入全文搜索表。
-        insertCmd.CommandText = "INSERT INTO textSearchTable (rowid, Value) VALUES (@rowid, @value);";
-        insertCmd.Parameters.Clear();
-        insertCmd.Parameters.AddWithValue("@rowid", id);
-        insertCmd.Parameters.AddWithValue("@value", data.Text);
-        insertCmd.ExecuteNonQuery();
+        insertFtsCmd.Parameters["@rowid"].Value = id;
+        insertFtsCmd.ExecuteNonQuery();
 
         tr.Commit();
 
         return id;
     }
 
-    public Task<int> Inset(NodeData data){
-        return _run.Run(()=> Inset2(data));
+    public Task<int> Inset(NodeData data)
+    {
+        return _run.Run(() => Inset2(data));
     }
 
-    NodeData UpData2(NodeData data){
-        // 在事务中同时更新节点表和全文搜索表。
+    NodeData UpData2(NodeData data)
+    {
+        // 步骤 1：获取已编译命令并绑定参数（事务开启前）。
+        var updateCmd = GetPreparedCommand(
+            "UPDATE nodesTable SET text = @text WHERE id = @id;");
+        updateCmd.Parameters.AddWithValue("@text", data.Text);
+        updateCmd.Parameters.AddWithValue("@id", data.Id);
+
+        var updateFtsCmd = GetPreparedCommand(
+            "UPDATE textSearchTable SET Value = @text WHERE rowid = @id;");
+        updateFtsCmd.Parameters.AddWithValue("@text", data.Text);
+        updateFtsCmd.Parameters.AddWithValue("@id", data.Id);
+
+        // 步骤 2：开启事务。
         using var tr = _con.BeginTransaction();
 
-        using var updateCmd = _con.CreateCommand();
+        // 步骤 3：将缓存的命令关联到当前事务，然后在事务内执行。
+        updateCmd.Transaction = tr;
+        updateFtsCmd.Transaction = tr;
 
-        // 更新节点表的文本。
-        updateCmd.CommandText = "UPDATE nodesTable SET text = @text WHERE id = @id;";
-        updateCmd.Parameters.AddWithValue("@text", data.Text);
-        updateCmd.Parameters.AddWithValue("@id", data.Id);
         updateCmd.ExecuteNonQuery();
-
-        // 更新全文搜索表的索引文本。
-        updateCmd.CommandText = "UPDATE textSearchTable SET Value = @text WHERE rowid = @id;";
-        updateCmd.Parameters.Clear();
-        updateCmd.Parameters.AddWithValue("@text", data.Text);
-        updateCmd.Parameters.AddWithValue("@id", data.Id);
-        updateCmd.ExecuteNonQuery();
+        updateFtsCmd.ExecuteNonQuery();
 
         tr.Commit();
 
         return data;
     }
 
-    public Task<NodeData> UpData(NodeData data){
-        return _run.Run(()=> UpData2(data));
+    public Task<NodeData> UpData(NodeData data)
+    {
+        return _run.Run(() => UpData2(data));
     }
 
-    QueryData QueryFunc2(int id){
+    QueryData QueryFunc2(int id)
+    {
+        var rootCmd = GetPreparedCommand(
+            "SELECT id, parent_id, text FROM nodesTable WHERE id = @id;");
+        rootCmd.Parameters.AddWithValue("@id", id);
 
-        using var queryCmd = _con.CreateCommand();
+        var childCmd = GetPreparedCommand(
+            "SELECT id, parent_id, text FROM nodesTable WHERE parent_id = @parent_id;");
+        childCmd.Parameters.AddWithValue("@parent_id", id);
 
-        // 查询指定 ID 的节点（Root）。
-        queryCmd.CommandText = "SELECT id, parent_id, text FROM nodesTable WHERE id = @id;";
-        queryCmd.Parameters.AddWithValue("@id", id);
-        using var rootReader = queryCmd.ExecuteReader();
-
-        // 将 reader 推进到第一行数据后再读取。
+        using var rootReader = rootCmd.ExecuteReader();
         var hasRoot = rootReader.Read();
         var root = hasRoot ? ReadNodeData(rootReader) : new NodeData();
-        rootReader.Close();
 
-        // 查询该节点的所有直接子节点（Child 列表）。
-        queryCmd.CommandText = "SELECT id, parent_id, text FROM nodesTable WHERE parent_id = @parent_id;";
-        queryCmd.Parameters.Clear();
-        queryCmd.Parameters.AddWithValue("@parent_id", id);
-        using var childReader = queryCmd.ExecuteReader();
+        using var childReader = childCmd.ExecuteReader();
         var children = ReadNodeDataList(childReader);
 
-        return new QueryData{Root = root, Child=children};
+        return new QueryData { Root = root, Child = children };
     }
 
-    public Task<QueryData> QueryFunc(int id){
-        return _run.Run(()=> QueryFunc2(id));
+    public Task<QueryData> QueryFunc(int id)
+    {
+        return _run.Run(() => QueryFunc2(id));
     }
 
     // ==================== 全文搜索 ====================
 
-    List<NodeData> SearchFunc2(string searchText){
-
-        using var searchCmd = _con.CreateCommand();
-
-        // FTS5 MATCH 搜索，按 rank 排序，连接节点表获取完整数据。
-        searchCmd.CommandText = """
+    List<NodeData> SearchFunc2(string searchText)
+    {
+        var searchCmd = GetPreparedCommand("""
             SELECT n.id, n.parent_id, n.text
             FROM textSearchTable t
             INNER JOIN nodesTable n ON t.rowid = n.id
             WHERE textSearchTable MATCH @searchText
             ORDER BY rank
-            """;
+            """);
         searchCmd.Parameters.AddWithValue("@searchText", searchText);
 
         using var reader = searchCmd.ExecuteReader();
@@ -265,8 +334,9 @@ public sealed class MyNodeDataStore{
         return results;
     }
 
-    public Task<List<NodeData>> SearchFunc(string searchText){
-        return _run.Run(()=> SearchFunc2(searchText));
+    public Task<List<NodeData>> SearchFunc(string searchText)
+    {
+        return _run.Run(() => SearchFunc2(searchText));
     }
 
     /// <summary>
@@ -285,10 +355,8 @@ public sealed class MyNodeDataStore{
 
         try
         {
-            // 使用单条 SQL 查询同时完成全文搜索和递归路径追溯。
-            string sql = @"
+            var sql = @"
                 WITH RECURSIVE
-                  -- 1. 全文搜索获取匹配的节点 ID 和 Rank
                   MatchedNodes AS (
                     SELECT rowid AS id, rank
                     FROM textSearchTable
@@ -296,7 +364,6 @@ public sealed class MyNodeDataStore{
                     ORDER BY rank
                     LIMIT @limit
                   ),
-                  -- 2. 递归获取所有路径上的节点（包括匹配节点本身，depth=0）
                   PathCTE(id, parent_id, text, target_id, depth, target_rank) AS (
                     SELECT n.id, n.parent_id, n.text, n.id, 0, m.rank
                     FROM nodesTable n
@@ -310,8 +377,7 @@ public sealed class MyNodeDataStore{
                 FROM PathCTE
                 ORDER BY target_rank, target_id, depth DESC;";
 
-            using var cmd = _con.CreateCommand();
-            cmd.CommandText = sql;
+            var cmd = GetPreparedCommand(sql);
             cmd.Parameters.AddWithValue("@keyword", searchKeyword);
             cmd.Parameters.AddWithValue("@limit", maxResults);
 
@@ -323,23 +389,19 @@ public sealed class MyNodeDataStore{
                 return new List<NodeSearchResult>();
             }
 
-            // 调试输出：检查获取到的总记录数。
             System.Diagnostics.Trace.WriteLine($"单条 SQL 查询返回总记录数: {allRecords.Count}");
 
-            // 3. 在内存中按 target_id 分组并重组结果。
             var results = allRecords
                 .GroupBy(r => r.Target_Id)
-                .OrderBy(g => g.First().Rank) // 保持 FTS 排序。
+                .OrderBy(g => g.First().Rank)
                 .Select(g => new NodeSearchResult
                 {
-                    // depth 为 0 的记录是匹配项本身。
                     Item = g.Where(r => r.Depth == 0).Select(r => new NodeData
                     {
                         Id = r.Id,
                         Parent_Id = r.Parent_Id,
                         Text = r.Text
                     }).FirstOrDefault(),
-                    // depth > 0 的记录是父节点，且已按 depth DESC 排序（根到子）。
                     Parents = g.Where(r => r.Depth > 0).Select(r => new NodeData
                     {
                         Id = r.Id,
@@ -354,29 +416,26 @@ public sealed class MyNodeDataStore{
         catch (SqliteException)
         {
             System.Diagnostics.Trace.WriteLine($"SearchNodesWithFullPath 发生错误");
-
             throw;
         }
     }
 
-    public Task<List<NodeSearchResult>> SearchNodesWithFullPath(string searchKeyword, int maxResults = 10){
-        return _run.Run(()=> SearchNodesWithFullPath2(searchKeyword, maxResults));
+    public Task<List<NodeSearchResult>> SearchNodesWithFullPath(string searchKeyword, int maxResults = 10)
+    {
+        return _run.Run(() => SearchNodesWithFullPath2(searchKeyword, maxResults));
     }
 
     // ==================== 根节点列表查询 ====================
 
-    List<NodeData> SearchFunc2(){
-
-        using var cmd = _con.CreateCommand();
-
-        // 查询根节点（parent_id 为 NULL），按 id 降序，最多 100 条。
-        cmd.CommandText = """
+    List<NodeData> SearchFunc2()
+    {
+        var cmd = GetPreparedCommand("""
             SELECT id, parent_id, text
             FROM nodesTable
             WHERE parent_id IS NULL
             ORDER BY id DESC
             LIMIT 100
-            """;
+            """);
 
         using var reader = cmd.ExecuteReader();
         var results = ReadNodeDataList(reader);
@@ -384,84 +443,95 @@ public sealed class MyNodeDataStore{
         return results;
     }
 
-    public Task<List<NodeData>> SearchFunc(){
-        return _run.Run(()=> SearchFunc2());
+    public Task<List<NodeData>> SearchFunc()
+    {
+        return _run.Run(() => SearchFunc2());
     }
 
+    // ==================== 资源释放 ====================
+
+    /// <summary>
+    /// 释放所有缓存的 SQL 命令和数据库连接。
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var cmd in _commandCache.Values)
+        {
+            cmd.Dispose();
+        }
+        _commandCache.Clear();
+
+        _con?.Dispose();
+    }
 }
 
+// ==================== 数据模型类 ====================
 
-    public class NodeData{
-        [JsonPropertyName("id")]
-        public int Id{get;set;}
+public class NodeData
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
 
-        [JsonPropertyName("parentId")]
-        public int? Parent_Id {get;set;}
+    [JsonPropertyName("parentId")]
+    public int? Parent_Id { get; set; }
 
-        [JsonPropertyName("title")]
-        public string Text {get;set;}
+    [JsonPropertyName("title")]
+    public string Text { get; set; }
+}
 
+public class QueryData
+{
+    [JsonPropertyName("root")]
+    public NodeData Root { get; set; }
 
-    }
+    [JsonPropertyName("child")]
+    public List<NodeData> Child { get; set; }
+}
 
-    public class QueryData{
+public class MessageData<T>
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; }
 
-        [JsonPropertyName("root")]
-        public NodeData Root{get;set;}
+    [JsonPropertyName("index")]
+    public int Index { get; set; }
 
-        [JsonPropertyName("child")]
-        public List<NodeData> Child{get;set;}
+    [JsonPropertyName("value")]
+    public T Value { get; set; }
+}
 
-
-    }
-
-
-
-
-    public class MessageData<T>{
-        [JsonPropertyName("type")]
-        public string Type{get;set;}
-
-        [JsonPropertyName("index")]
-        public int Index{get;set;}
-
-        [JsonPropertyName("value")]
-        public T Value {get;set;}
-
-    }
+/// <summary>
+/// 搜索结果项，包含当前节点及其父节点路径
+/// </summary>
+public class NodeSearchResult
+{
+    /// <summary>
+    /// 匹配到的节点
+    /// </summary>
+    [JsonPropertyName("item")]
+    public NodeData Item { get; set; }
 
     /// <summary>
-    /// 搜索结果项，包含当前节点及其父节点路径
+    /// 从根节点到当前节点的路径上的所有父节点列表（按从根到子的顺序排列，不包含当前节点本身）
     /// </summary>
-    public class NodeSearchResult
-    {
-        /// <summary>
-        /// 匹配到的节点
-        /// </summary>
-        [JsonPropertyName("item")]
-        public NodeData Item { get; set; }
+    [JsonPropertyName("parents")]
+    public List<NodeData> Parents { get; set; }
+}
 
-        /// <summary>
-        /// 从根节点到当前节点的路径上的所有父节点列表（按从根到子的顺序排列，不包含当前节点本身）
-        /// </summary>
-        [JsonPropertyName("parents")]
-        public List<NodeData> Parents { get; set; }
-    }
+/// <summary>
+/// 内部使用的祖先节点记录类，用于递归查询结果映射
+/// </summary>
+public class AncestorRecord
+{
+    public int Id { get; set; }
 
-    /// <summary>
-    /// 内部使用的祖先节点记录类，用于递归查询结果映射
-    /// </summary>
-    public class AncestorRecord
-    {
-        public int Id { get; set; }
+    public int? Parent_Id { get; set; }
 
-        public int? Parent_Id { get; set; }
+    public string Text { get; set; }
 
-        public string Text { get; set; }
+    public int Target_Id { get; set; }
 
-        public int Target_Id { get; set; }
+    public int Depth { get; set; }
 
-        public int Depth { get; set; }
-
-        public double Rank { get; set; }
-    }
+    public double Rank { get; set; }
+}
