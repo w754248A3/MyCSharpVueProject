@@ -10,15 +10,19 @@ public sealed class NodeImageStore : IDisposable
     private readonly object _lock = new();
     private bool _disposed;
 
-    static int s_newCount =0;
+    static int s_newCount = 0;
+
+    // SQL 命令缓存，键为 SQL 文本，值为已编译（Prepare）的命令。
+    // Prepare() 仅在首次创建时调用一次，后续复用已编译的命令。
+    // 每次使用前清除参数，由调用方重新绑定。
+    private readonly Dictionary<string, SqliteCommand> _commandCache = new();
 
     public NodeImageStore()
     {
-        
-        if(Interlocked.Exchange(ref s_newCount, 1)!=0){
+        if (Interlocked.Exchange(ref s_newCount, 1) != 0)
+        {
             throw new InvalidOperationException("类只能有一个实例");
         }
-
 
         var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NodeImages.db");
         _connectionString = new SqliteConnectionStringBuilder
@@ -31,6 +35,8 @@ public sealed class NodeImageStore : IDisposable
         _connection = new SqliteConnection(_connectionString);
         Initialize();
     }
+
+    // ==================== 序列化执行 ====================
 
     private Task<T> RunSerializedAsync<T>(Func<T> func)
     {
@@ -54,6 +60,56 @@ public sealed class NodeImageStore : IDisposable
         });
     }
 
+    // ==================== 一次性 SQL 便捷方法 ====================
+
+    /// <summary>
+    /// 执行不需要参数的一次性非查询 SQL（如 PRAGMA、CREATE TABLE 等建表语句）。
+    /// 每次调用创建新命令，执行后立即释放。
+    /// </summary>
+    private void ExecuteNonQueryOnce(string sql)
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// 执行不需要参数的一次性 SQL 并返回标量值。
+    /// 每次调用创建新命令，执行后立即释放。
+    /// </summary>
+    private T ExecuteScalarOnce<T>(string sql)
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = sql;
+        return (T)cmd.ExecuteScalar()!;
+    }
+
+    // ==================== 命令缓存与编译 ====================
+
+    /// <summary>
+    /// 获取指定 SQL 对应的已编译命令。
+    /// 首次调用时创建命令、设置 SQL、调用 Prepare() 编译，并加入缓存。
+    /// 后续调用直接复用缓存的命令，只清除参数不重新编译。
+    /// 调用方拿到命令后绑定参数，然后开启事务并执行。
+    /// </summary>
+    private SqliteCommand GetPreparedCommand(string sql)
+    {
+        var isCached = _commandCache.TryGetValue(sql, out var cachedCommand);
+
+        if (!isCached)
+        {
+            cachedCommand = _connection.CreateCommand();
+            cachedCommand.CommandText = sql;
+            cachedCommand.Prepare();
+            _commandCache[sql] = cachedCommand;
+        }
+
+        cachedCommand!.Parameters.Clear();
+        return cachedCommand;
+    }
+
+    // ==================== 辅助方法 ====================
+
     void ApplyPragmas(SqliteConnection con)
     {
         using var pragma = con.CreateCommand();
@@ -65,8 +121,6 @@ public sealed class NodeImageStore : IDisposable
             PRAGMA temp_store = MEMORY;
         ";
         pragma.ExecuteNonQuery();
-
-        //GetPragmas(con);
     }
 
     void GetPragmas(SqliteConnection con)
@@ -90,10 +144,14 @@ public sealed class NodeImageStore : IDisposable
         }
     }
 
+    // ==================== 数据库初始化 ====================
+
     private void Initialize()
     {
         _connection.Open();
         ApplyPragmas(_connection);
+
+        // 建表 SQL 只在启动时执行一次，直接使用普通命令。
         using var tr = _connection.BeginTransaction();
 
         using var createTable = _connection.CreateCommand();
@@ -108,7 +166,6 @@ public sealed class NodeImageStore : IDisposable
             created_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
         """;
-        createTable.Prepare();
         createTable.ExecuteNonQuery();
 
         using var createIndex = _connection.CreateCommand();
@@ -117,22 +174,21 @@ public sealed class NodeImageStore : IDisposable
         CREATE INDEX IF NOT EXISTS idx_node_images_node_id
         ON node_images(node_id, id DESC);
         """;
-        createIndex.Prepare();
         createIndex.ExecuteNonQuery();
 
         tr.Commit();
     }
+
+    // ==================== 公开方法 ====================
 
     public Task<NodeImageSummary> GetSummaryAsync(int nodeId)
     {
         return RunSerializedAsync(() =>
         {
             ThrowIfDisposed();
-            using var tr = _connection.BeginTransaction();
 
-            using var cmd = _connection.CreateCommand();
-            cmd.Transaction = tr;
-            cmd.CommandText = """
+            // 步骤 1：获取已编译命令并绑定参数（事务开启前）。
+            var cmd = GetPreparedCommand("""
             SELECT
                 COUNT(1) AS total_count,
                 (
@@ -144,9 +200,14 @@ public sealed class NodeImageStore : IDisposable
                 ) AS latest_id
             FROM node_images
             WHERE node_id = $nodeId;
-            """;
+            """);
             cmd.Parameters.AddWithValue("$nodeId", nodeId);
-            cmd.Prepare();
+
+            // 步骤 2：开启事务。
+            using var tr = _connection.BeginTransaction();
+
+            // 步骤 3：将缓存的命令关联到当前事务，然后执行查询。
+            cmd.Transaction = tr;
 
             using var reader = cmd.ExecuteReader();
             reader.Read();
@@ -167,18 +228,21 @@ public sealed class NodeImageStore : IDisposable
         return RunSerializedAsync(() =>
         {
             ThrowIfDisposed();
-            using var tr = _connection.BeginTransaction();
 
-            using var cmd = _connection.CreateCommand();
-            cmd.Transaction = tr;
-            cmd.CommandText = """
+            // 步骤 1：获取已编译命令并绑定参数。
+            var cmd = GetPreparedCommand("""
             SELECT id, file_name, mime_type, length(image_data) AS size, created_utc
             FROM node_images
             WHERE node_id = $nodeId
             ORDER BY id DESC;
-            """;
+            """);
             cmd.Parameters.AddWithValue("$nodeId", nodeId);
-            cmd.Prepare();
+
+            // 步骤 2：开启事务。
+            using var tr = _connection.BeginTransaction();
+
+            // 步骤 3：关联事务并执行查询。
+            cmd.Transaction = tr;
 
             var list = new List<NodeImageInfo>();
             using var reader = cmd.ExecuteReader();
@@ -204,21 +268,24 @@ public sealed class NodeImageStore : IDisposable
         return RunSerializedAsync(() =>
         {
             ThrowIfDisposed();
-            using var tr = _connection.BeginTransaction();
 
-            using var cmd = _connection.CreateCommand();
-            cmd.Transaction = tr;
-            cmd.CommandText = """
+            // 步骤 1：获取已编译命令并绑定参数。
+            var cmd = GetPreparedCommand("""
             INSERT INTO node_images(node_id, file_name, mime_type, image_data)
             VALUES($nodeId, $fileName, $mimeType, $imageData);
             SELECT last_insert_rowid();
-            """;
+            """);
 
             cmd.Parameters.AddWithValue("$nodeId", nodeId);
             cmd.Parameters.AddWithValue("$fileName", (object?)fileName ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$mimeType", mimeType);
             cmd.Parameters.Add("$imageData", SqliteType.Blob).Value = imageData;
-            cmd.Prepare();
+
+            // 步骤 2：开启事务。
+            using var tr = _connection.BeginTransaction();
+
+            // 步骤 3：关联事务并执行。
+            cmd.Transaction = tr;
 
             var result = cmd.ExecuteScalar();
             tr.Commit();
@@ -231,17 +298,20 @@ public sealed class NodeImageStore : IDisposable
         return RunSerializedAsync(() =>
         {
             ThrowIfDisposed();
-            using var tr = _connection.BeginTransaction();
 
-            using var cmd = _connection.CreateCommand();
-            cmd.Transaction = tr;
-            cmd.CommandText = """
+            // 步骤 1：获取已编译命令并绑定参数。
+            var cmd = GetPreparedCommand("""
             SELECT id, node_id, file_name, mime_type, image_data
             FROM node_images
             WHERE id = $id;
-            """;
+            """);
             cmd.Parameters.AddWithValue("$id", id);
-            cmd.Prepare();
+
+            // 步骤 2：开启事务。
+            using var tr = _connection.BeginTransaction();
+
+            // 步骤 3：关联事务并执行查询。
+            cmd.Transaction = tr;
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
@@ -269,19 +339,24 @@ public sealed class NodeImageStore : IDisposable
         return RunSerializedAsync(() =>
         {
             ThrowIfDisposed();
+
+            // 步骤 1：获取已编译命令并绑定参数。
+            var cmd = GetPreparedCommand("DELETE FROM node_images WHERE id = $id;");
+            cmd.Parameters.AddWithValue("$id", id);
+
+            // 步骤 2：开启事务。
             using var tr = _connection.BeginTransaction();
 
-            using var cmd = _connection.CreateCommand();
+            // 步骤 3：关联事务并执行。
             cmd.Transaction = tr;
-            cmd.CommandText = "DELETE FROM node_images WHERE id = $id;";
-            cmd.Parameters.AddWithValue("$id", id);
-            cmd.Prepare();
 
             var affected = cmd.ExecuteNonQuery();
             tr.Commit();
             return affected > 0;
         });
     }
+
+    // ==================== 资源释放 ====================
 
     public void Dispose()
     {
@@ -291,6 +366,12 @@ public sealed class NodeImageStore : IDisposable
             {
                 return;
             }
+
+            foreach (var cmd in _commandCache.Values)
+            {
+                cmd.Dispose();
+            }
+            _commandCache.Clear();
 
             _connection.Dispose();
             _disposed = true;
