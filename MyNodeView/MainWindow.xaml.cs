@@ -37,7 +37,6 @@ public partial class MainWindow : Window
 
     private readonly AppConfig _appConfig;
     private readonly WebView2EnvironmentService _environmentService;
-    private string _webApiMessage = "";
 
     /// <summary>
     /// 当前打开的子窗口字典，以 ChildWindowDescriptor.Key 为索引。
@@ -137,39 +136,6 @@ public partial class MainWindow : Window
         webView2.CoreWebView2.Reload();
     }
 
-    private void Message_Click(object sender, RoutedEventArgs e)
-    {
-        // 显示后台 Web API 写入到窗口中的测试消息。
-        MessageBox.Show(_webApiMessage);
-    }
-
-    /// <summary>
-    /// Web API 运行在后台线程，WPF UI 只能在主线程更新。
-    /// </summary>
-    public void UpdateMessage(string message)
-    {
-        Dispatcher.Invoke(() =>
-        {
-            _webApiMessage = message;
-        });
-    }
-
-    private void Test_Click(object sender, RoutedEventArgs e)
-    {
-        // 预留菜单入口：当前没有测试动作。
-    }
-
-    private void Export_Click(object sender, RoutedEventArgs e)
-    {
-        // 预留菜单入口：当前没有导出动作。
-    }
-
-    private void Import_Click(object sender, RoutedEventArgs e)
-    {
-        // 保留原有导入示例代码，便于后续继续实现数据导入功能。
-        var json = File.ReadAllText("json_data.json", Encoding.UTF8);
-        var nodes = JsonSerializer.Deserialize<List<NodeData>>(json);
-    }
 
     // ==================== 子窗口管理 ====================
 

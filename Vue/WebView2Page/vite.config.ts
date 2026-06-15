@@ -24,6 +24,10 @@ export default defineConfig({
         target: 'http://localhost:34114',
         changeOrigin: true,
       },
+      '/SingleFilePage':{
+        target: 'http://localhost:34114',
+        changeOrigin: true,
+      }
     },
   },
 })

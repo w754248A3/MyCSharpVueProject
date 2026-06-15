@@ -16,13 +16,7 @@
                 <MenuItem Header="_重新加载" Click="ReLoad_Click"/>
 
                 <Separator/>
-                <MenuItem Header="_Test" Click="Test_Click"/>
-                <Separator/>
-                <MenuItem Header="_导出" Click="Export_Click"/>
-                <Separator/>
-                <MenuItem Header="_导入" Click="Import_Click"/>
-                <Separator/>
-                <MenuItem Header="_Message" Click="Message_Click"/>
+               
             </MenuItem>
 
             <!-- 窗口菜单：用于创建和管理子窗口 -->

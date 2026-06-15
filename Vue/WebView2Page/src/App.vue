@@ -203,11 +203,6 @@ function onAddRoot() {
 }
 
 
-async function onText() {
-
-
-}
-
 const upNode = async (id: number, text: string) => {
 
   return await messageFunc("UPDATA", { id: id, parentId: null, title: text });
@@ -238,33 +233,7 @@ const initRootNodeListPageData= async ()=>{
 };
 
 
-const getClipboardHistory = async ()=>{
-
-  const res = await fetch("/api/clipboardhistory");
-
-  const json = (await res.json())as string[];
-
-  return json;
-
-};
-
-
-const onViewClipboardHistory = async ()=>{
-
-  
-  const vs = await getClipboardHistory();
- 
-  addTabValue.value = {
-    text: `粘贴板 ${new Date().toLocaleTimeString()}`,
-    id: Date.now(),
-    type: 'clipboard',
-    content: vs.join("\r\n\r\n")
-  };
-
-};
-
-
-setTimeout(initRootNodeListPageData, 1000);
+setTimeout(initRootNodeListPageData,0);
 
 provide(onAddNodeKey, addNode2);
 
@@ -291,8 +260,6 @@ provide(onUPNodeKey, upNode);
         <SearchLayout @search-change="handleSearch2"></SearchLayout> 
         <button @click="onAddRoot">添加根</button>
         <button @click="onViewAddAndUpDataButton">切换显示更改按钮</button>
-        <button @click="onViewClipboardHistory">粘贴板</button>
-        <button @click="onText">测试</button>
       </div>
       <div class="app-content">
         <ListPage v-show="listIsView" :items="listPageData" @item-click="onSelect"></ListPage>
