@@ -95,11 +95,18 @@ const handleSearch2 = async (value: string) => {
  
   const vs = await messageFunc("SEARCH", value);
   const fvs: ListItem[] = vs.map(v => { 
+
+    const tvs = v.item.title.split("\n");
+
+    const text =tvs.filter(v=> v.includes(value)).join("\n");
+
     return { 
-      text: v.item.title, 
+      text: text, 
       id: v.item.id,
       path: v.parents.length > 0 ? v.parents.map(p => p.title).join(" -> ") : undefined,
-      pathNodes: v.parents.length > 0 ? v.parents.map(p => ({ id: p.id, parentId: p.parentId, title: p.title })) : undefined
+      pathNodes: v.parents.length > 0 ? v.parents.map(p => ({ id: p.id, parentId: p.parentId, title: p.title })) : undefined,
+      searchKey:value,
+      searchText:text
     } 
   });
   listPageData.value = fvs;

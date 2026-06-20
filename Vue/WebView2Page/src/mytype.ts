@@ -7,6 +7,8 @@ export interface ListItem {
   pathNodes?: NodeData[]
   type?: 'survey' | 'clipboard'
   content?: string
+  searchKey?:string
+  searchText?:string
 }
 
 export interface NodeSearchResult {
@@ -20,6 +22,7 @@ export interface Tabs {
   index: number
   type: 'survey' | 'clipboard'
   content?: string
+  listItem:ListItem
 }
 
 export interface NodeData{

@@ -48,6 +48,13 @@
         <span class="copy-icon">📋</span> 复制
       </button>
     </div>
+    <textarea 
+      v-if="itemData.searchText && terminalNode && terminalNode.id=== itemData.id"
+      class="result-textarea"
+      spellcheck="false"
+      v-model="searchText"
+    >
+    </textarea>
     <textarea
       ref="textareaRef"
       v-model="editableResult"
@@ -66,13 +73,13 @@
 import { inject, reactive, ref, computed, watch, nextTick } from "vue";
 import PopPage from "./PopPage.vue";
 import NodeImageManager from "./NodeImageManager.vue";
-import {type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey} from "../mytype"
+import {type ViewTreeData, type Option, onFindChildNodeKey, onAddNodeKey, onUPNodeKey, isViewAddAndUpDataButtonKey, type ListItem} from "../mytype"
 
 const isOpenPop =ref(false);
 
 
 const props = defineProps<{
-  id:number
+  itemData:ListItem
 
 }>();
 
@@ -117,6 +124,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   const collapsed = reactive<Record<number, boolean>>({});
   const selected = reactive<Record<number, number | null>>({});
   const editableResult = ref("");
+  const searchText = ref(props.itemData.searchText);
   const resultAreaRef = ref<HTMLElement | null>(null);
   const textareaRef = ref<HTMLTextAreaElement | null>(null);
   const terminalNode = computed(() => {
@@ -156,7 +164,7 @@ const outText = ref<(s:string)=> void>((s)=> {});
   };
 
   const initRootNode = async () => {
-    const root = await findChildNode(props.id);
+    const root = await findChildNode(props.itemData.id);
     if (root) {
       setSingleRoot(root);
     }
@@ -422,6 +430,10 @@ const outText = ref<(s:string)=> void>((s)=> {});
   font-size: 14px;
   flex: 1;
   user-select: text;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .option-item:hover .option-text {

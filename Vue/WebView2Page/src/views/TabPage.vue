@@ -22,7 +22,7 @@
         class="tab-content"
         :class="{ active: activeTab === tab.index }"
       >
-        <SurveyTree v-if="tab.type === 'survey'" :id="tab.id" />
+        <SurveyTree v-if="tab.type === 'survey'" :item-data="tab.listItem" />
         <ClipboardHistory v-else-if="tab.type === 'clipboard'" :content="tab.content" />
       </div>
     </div>
@@ -87,7 +87,8 @@ const props = defineProps<{
         id: newValue.id, 
         index: tabIndex, 
         type: newValue.type || 'survey',
-        content: newValue.content
+        content: newValue.content,
+        listItem:newValue
       });
 
       activeTab.value= tabIndex;

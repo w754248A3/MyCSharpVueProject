@@ -7,7 +7,6 @@
         :class="{ selected: selectedIndex === index }"
         @click="handleClick(item, index)"
         class="list-item"
-        :title="item.path ? `${item.path} -> ${item.text}` : item.text"
       >
         <div v-if="item.path" class="item-path">
           <template v-if="item.pathNodes && item.pathNodes.length > 0">
@@ -54,7 +53,7 @@ watch(
 
 function handleClick(item: ListItem, index: number) {
   selectedIndex.value = index
-  emit('item-click', { text: item.text, id: item.id })
+  emit('item-click', item)
 }
 
 function handlePathClick(node: { id: number; title: string }, index: number) {
