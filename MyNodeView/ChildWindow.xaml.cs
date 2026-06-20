@@ -94,6 +94,9 @@ public partial class ChildWindow : Window
 
         // 调用 Shell API 为窗口设置独立的 AppUserModelID。
         TaskbarAppUserModelId.SetForWindow(windowHandle, appUserModelId);
+
+        // 在 Release 构建中禁止截图工具捕获本窗口内容。
+        WindowProtection.HideFromScreenshots(windowHandle);
     }
 
     /// <summary>

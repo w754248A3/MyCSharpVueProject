@@ -77,6 +77,9 @@ public partial class MainWindow : Window
 
         // 主窗口使用固定的 AppUserModelID。
         TaskbarAppUserModelId.SetForWindow(windowHandle, "MyNodeView.MainWindow");
+
+        // 在 Release 构建中禁止截图工具捕获本窗口内容。
+        WindowProtection.HideFromScreenshots(windowHandle);
     }
 
     /// <summary>
