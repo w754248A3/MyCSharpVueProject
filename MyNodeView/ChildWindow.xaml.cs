@@ -129,6 +129,11 @@ public partial class ChildWindow : Window
 
         // 保存当前窗口尺寸到配置（按 Key 独立存储）。
         SaveWindowSize();
+
+        // 移除窗口的 AppUserModelID 属性，让系统回收相关资源。
+        // 必须在窗口关闭（HWND 销毁）前调用。
+        var windowHandle = new WindowInteropHelper(this).Handle;
+        TaskbarAppUserModelId.RemoveForWindow(windowHandle);
     }
 
     // ==================== WebView2 初始化 ====================

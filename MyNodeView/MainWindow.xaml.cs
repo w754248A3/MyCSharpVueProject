@@ -115,6 +115,11 @@ public partial class MainWindow : Window
         // 程序正常退出后会由 Program.Main 统一将配置写回磁盘。
         _appConfig.WindowWidth = Width;
         _appConfig.WindowHeight = Height;
+
+        // 移除窗口的 AppUserModelID 属性，让系统回收相关资源。
+        // 必须在窗口关闭（HWND 销毁）前调用。
+        var windowHandle = new WindowInteropHelper(this).Handle;
+        TaskbarAppUserModelId.RemoveForWindow(windowHandle);
     }
 
     // ==================== 主窗口 WebView2 URL 的基地址 ====================
